@@ -1,0 +1,242 @@
+{% include 'sidebar.html' %}
+
+<div class="content" style="padding: 2rem; max-width: 1200px; margin: auto;">
+
+    <h2 style="font-size: 1.8rem; margin-bottom: 1rem;">Registrar Venta</h2>
+
+    {% if result %}
+        {% if result.status == "ok" %}
+            <div style="background-color: #d1fae5; padding: 10px; border-radius: 6px; color: #065f46; margin-bottom: 1rem;">
+                ✅ Venta registrada. Total: ${{ result.total }}
+            </div>
+        {% else %}
+            <div style="background-color: #fee2e2; padding: 10px; border-radius: 6px; color: #991b1b; margin-bottom: 1rem;">
+                ❌ Error: {{ result.message }}
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- FORMULARIO -->
+    <form method="post" action="/process-sale"
+    oninput="calculateChange()"
+    style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;">
+
+    <!-- 🛒 PRODUCTO (ahora primero) -->
+    <div class="box-section" style="flex: 1;">
+        <h3>🛒 Producto</h3>
+
+        <label>Buscar producto:</label>
+        <input type="text" id="product-search" placeholder="Escribe el nombre..." oninput="filterProducts()" class="input-modern">
+
+        <label>Producto:</label>
+        <select name="product" id="product-select" required class="input-modern" onchange="updatePrice()">
+            {% for p in products %}
+                <option value="{{ p.name }}" data-price="{{ p.price }}">{{ p.name }} (Stock: {{ p.stock }})</option>
+            {% endfor %}
+        </select>
+
+        <label>Cantidad:</label>
+        <input type="number" name="quantity" id="quantity" min="1" required value="1" class="input-modern">
+    </div>
+
+    <!-- 💳 PAGO (más grande con flex: 1.5) -->
+    <div class="box-section" style="flex: 1.5;">
+        <h3>💳 Pago</h3>
+
+        <label>Método de Pago:</label>
+        <select name="payment_method" required class="input-modern">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Nequi">Nequi</option>
+            <option value="Daviplata">Daviplata</option>
+        </select>
+
+        <label>💵 Dinero Recibido:</label>
+        <input type="number" id="money-received" min="0" placeholder="0.00" class="input-modern">
+
+        <label>🧾 Total de Venta:</label>
+        <input type="text" id="total-sale" readonly class="input-modern">
+
+        <div id="change-box" class="change-box">
+            Cambio a Devolver:<br>
+            <span id="change-due" style="font-size: 2rem;">$0.00</span>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+            <button type="submit" class="btn-modern" onclick="return confirmSale()">💰 Vender</button>
+            <button type="reset" class="btn-modern btn-secondary">🧹 Limpiar</button>
+        </div>
+    </div>
+
+</form>
+
+    <!-- 📜 HISTORIAL -->
+    <div class="box-section sales-history" style="margin-top: 2rem;">
+
+        <h3>📜 Historial de Ventas</h3>
+
+        <div style="margin: 1rem 0;">
+            <a href="/export-sales-excel" class="btn-modern" style="background-color: #10b981;">⬇️ Exportar a Excel</a>
+            <a href="/export-sales-pdf" class="btn-modern" style="background-color: #ef4444;">⬇️ Exportar a PDF</a>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                <thead style="background-color: #f3f4f6;">
+                    <tr>
+                        <th style="text-align: left; padding: 0.5rem;">Producto</th>
+                        <th style="text-align: left; padding: 0.5rem;">Cantidad</th>
+                        <th style="text-align: left; padding: 0.5rem;">Total</th>
+                        <th style="text-align: left; padding: 0.5rem;">Método de Pago</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales %}
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 0.5rem;">{{ sale.product }}</td>
+                            <td style="padding: 0.5rem;">{{ sale.quantity }}</td>
+                            <td style="padding: 0.5rem;">${{ sale.total }}</td>
+                            <td>{{ sale.payment_method }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ESTILOS RESPONSIVOS Y MODERNOS -->
+<style>
+    .input-modern {
+        width: 100%;
+        padding: 0.7rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f9fafb;
+    }
+
+    .btn-modern {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .btn-modern:hover {
+        background-color: #2563eb;
+    }
+
+    .btn-secondary {
+        background-color: #6b7280;
+    }
+
+    .box-section {
+        flex: 1;
+        min-width: 300px;
+        max-width: 100%;
+        padding: 1.5rem;
+        background-color: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .change-box {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 2px solid #fcd34d;
+        padding: 1rem;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 1rem;
+    }
+
+    .sales-history table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 400px;
+    }
+
+    .sales-history th, .sales-history td {
+        padding: 0.75rem;
+        text-align: left;
+    }
+
+    @media (max-width: 768px) {
+        form {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+
+        .box-section {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        .btn-modern {
+            width: 100%;
+            text-align: center;
+        }
+
+        .sales-history table {
+            font-size: 0.9rem;
+        }
+
+        .sales-history th, .sales-history td {
+            padding: 0.5rem;
+        }
+    }
+</style>
+
+<!-- SCRIPT -->
+<script>
+    function updatePrice() {
+        calculateChange();
+    }
+
+    function calculateChange() {
+        const select = document.getElementById("product-select");
+        const selectedOption = select.options[select.selectedIndex];
+        const price = parseFloat(selectedOption.dataset.price || 0);
+        const quantity = parseInt(document.getElementById("quantity").value) || 0;
+        const received = parseFloat(document.getElementById("money-received").value) || 0;
+
+        const total = price * quantity;
+        const change = received - total;
+
+        document.getElementById("total-sale").value = total.toFixed(2);
+        document.getElementById("change-due").textContent = "$" + (change >= 0 ? change.toFixed(2) : "0.00");
+    }
+
+    function filterProducts() {
+        const input = document.getElementById("product-search").value.toLowerCase();
+        const select = document.getElementById("product-select");
+        const options = select.options;
+
+        for (let i = 0; i < options.length; i++) {
+            const optionText = options[i].text.toLowerCase();
+            options[i].style.display = optionText.includes(input) ? "block" : "none";
+        }
+
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].style.display === "block") {
+                select.selectedIndex = i;
+                break;
+            }
+        }
+
+        calculateChange();
+    }
+
+    function confirmSale() {
+        return confirm("¿Deseas confirmar la venta?");
+    }
+</script>
