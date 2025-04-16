@@ -1,76 +1,127 @@
-from fastapi import FastAPI, Request, Form, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
+from Routes import auth, inventario,sales, Proveedor
+from modules import models
+from Database import engine
+from fastapi.responses import HTMLResponse , RedirectResponse
+from sqlalchemy import text
+from starlette.status import HTTP_302_FOUND
+import hashlib
 
-from modules.inventory import get_products, add_new_product
+models.Base.metadata.create_all(bind=engine)
 
-from modules.billing import get_sales, add_sale
-from modules.reports import export_sales_excel, export_sales_pdf
-from fastapi import Form
+app = FastAPI(title="Inventario & Facturación")
 
-
-app = FastAPI()
+app.include_router(auth.router)
+app.include_router(inventario.router)
+app.include_router(sales.router)
 templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.include_router(Proveedor.router)
 
-@app.get("/", response_class=HTMLResponse)
-def login_page(request: Request):
+
+# ✅ Función para cifrar contraseñas con SHA-256
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+# Ruta principal con menú
+@app.get("/menu", response_class=HTMLResponse)
+async def menu_principal(request: Request):
+    return templates.TemplateResponse("menu.html", {"request": request})
+
+# Mostrar el formulario de login
+@app.get("/login", response_class=HTMLResponse)
+async def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    with engine.connect() as conn:
+        # Ejecutar la consulta para obtener al usuario
+        result = conn.execute(
+            text("SELECT * FROM StoreUser WHERE username = :username"),
+            {"username": username}
+        ).fetchone()
+
+        # Agregar print para depurar
+        print("Resultado de la consulta:", result)
+
+        if result:
+            print(f"Contraseña almacenada: {result[3]}")  # Muestra la contraseña almacenada
+            if password == result[3]:  # Comparación directa sin cifrado
+                # Login exitoso
+                print("Login exitoso")
+                return RedirectResponse(url="/menu", status_code=HTTP_302_FOUND)
+            else:
+                print("Contraseña incorrecta")
+        else:
+            print("Usuario no encontrado")
+
+    # Si no hay coincidencia
+    return templates.TemplateResponse("login.html", {
         "request": request,
-        "products": get_products(),
-        "page": "dashboard"
+        "error": "Usuario o contraseña incorrectos"
     })
 
-@app.get("/sales", response_class=HTMLResponse)
-def sales_page(request: Request):
-    return templates.TemplateResponse("sales.html", {
-        "request": request,
-        "products": get_products(),
-        "sales": get_sales(),
-        "page": "sales"
-    })
+@app.get("/crear-usuario", response_class=HTMLResponse)
+async def crear_usuario_form(request: Request):
+    return templates.TemplateResponse("crear_usuario.html", {"request": request})
 
-@app.post("/process-sale")
-def process_sale(
+@app.get("/usuarios", response_class=HTMLResponse)
+async def mostrar_usuarios(request: Request):
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT * FROM StoreUser"))
+        usuarios = [dict(row) for row in result]
+    return templates.TemplateResponse("usuarios.html", {"request": request, "usuarios": usuarios, "usuario": None})
+
+@app.post("/usuarios/guardar")
+async def guardar_usuario(
     request: Request,
-    product: str = Form(...),
-    quantity: int = Form(...),
-    payment_method: str = Form(...)
+    id: str = Form(None),
+    nombre: str = Form(...),
+    username: str = Form(...),
+    password: str = Form(None),
+    rol: str = Form(...)
 ):
-    result = add_sale(product, quantity, payment_method)
-    return templates.TemplateResponse("sales.html", {
-        "request": request,
-        "products": get_products(),
-        "sales": get_sales(),
-        "result": result,
-        "page": "sales"
-    })
-
-@app.get("/reports", response_class=HTMLResponse)
-def reports_page(request: Request):
-    return templates.TemplateResponse("reports.html", {"request": request, "page": "reports"})
-
-@app.post("/add-product")
-def add_product(request: Request, name: str = Form(...), price: float = Form(...), stock: int = Form(...)):
-    add_new_product(name, price, stock)
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
-
-
-
-@app.get("/export-sales-excel")
-def export_excel():
-    return export_sales_excel()
-
-@app.get("/export-sales-pdf")
-def export_pdf():
-    return export_sales_pdf()
-
-
+    try:
+        with engine.connect() as conn:
+            if id:  # Actualizar
+                if password:
+                    conn.execute(
+                        text("""
+                            UPDATE StoreUser
+                            SET nombre=:nombre, username=:username, password=:password, rol=:rol
+                            WHERE id=:id
+                        """),
+                        {"id": id, "nombre": nombre, "username": username, "password": password, "rol": rol}
+                    )
+                else:
+                    conn.execute(
+                        text("""
+                            UPDATE StoreUser
+                            SET nombre=:nombre, username=:username, rol=:rol
+                            WHERE id=:id
+                        """),
+                        {"id": id, "nombre": nombre, "username": username, "rol": rol}
+                    )
+            else:  # Crear nuevo
+                conn.execute(
+                    text("""
+                        INSERT INTO StoreUser (nombre, username, password, rol)
+                        VALUES (:nombre, :username, :password, :rol)
+                    """),
+                    {"nombre": nombre, "username": username, "password": password, "rol": rol}
+                )
+            conn.commit()
+        return RedirectResponse(url="/usuarios", status_code=HTTP_302_FOUND)
+    except Exception as e:
+        return templates.TemplateResponse("usuarios.html", {
+            "request": request,
+            "error": "Error al guardar usuario: " + str(e),
+            "usuarios": [],
+            "usuario": None
+        })
+    
+    
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

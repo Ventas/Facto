@@ -1,242 +1,371 @@
-{% include 'sidebar.html' %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Venta de productos</title>
+    <div style="text-align: right; margin-bottom: 10px;">
+        <a href="/">
+            <button type="button" style="background-color: #6c757d;">
+                ⬅️ Volver al menú
+            </button>
+        </a>
+    </div>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            padding: 30px;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            max-width: 1200px;
+            margin: auto;
+        }
+        h1, h2 {
+            color: #212529;
+        }
+        .form-container, .sales-history, .sales-summary {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .form-sections {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            font-size: 15px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #change_display {
+            font-size: 22px;
+            color: #28a745;
+            font-weight: bold;
+            background-color: #e9fce9;
+            padding: 10px 15px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+        }
+        .sales-table th, .sales-table td {
+            padding: 12px;
+            border: 1px solid #ddd;
+        }
+        .sales-table th {
+            background-color: #007bff;
+            color: white;
+            text-align: left;
+        }
+        .sales-summary {
+            background: linear-gradient(to right, #e3f2fd, #f0faff);
+            border-left: 6px solid #007bff;
+        }
+        .sales-summary ul {
+            list-style: none;
+            padding-left: 0;
+            font-size: 18px;
+            margin: 0;
+        }
+        .sales-summary li {
+            margin-bottom: 8px;
+        }
+        .error-message {
+            color: #dc3545;
+            font-weight: 500;
+        }
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .export-buttons a button {
+            background-color: #17a2b8;
+        }
+        .export-buttons a button:hover {
+            background-color: #117a8b;
+        }
+        .product-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
 
-<div class="content" style="padding: 2rem; max-width: 1200px; margin: auto;">
+<div class="container">
 
-    <h2 style="font-size: 1.8rem; margin-bottom: 1rem;">Registrar Venta</h2>
+    <div class="form-container">
+        <h1>Venta de productos</h1>
+        <form method="post" action="/process-sale" onsubmit="return validateForm()">
+            <div style="display: flex; gap: 40px; align-items: flex-start;">
+                <!-- Sección de productos -->
+                <div style="flex: 2;">
+                    <h3>🛒 Productos</h3>
+                    <div class="form-group">
+                        <label for="search">Buscar producto:</label>
+                        <input type="text" id="search" placeholder="Escribe el nombre..." oninput="filterProducts()">
+                    </div>
+        
+                    <button type="button" onclick="addProduct()">➕ Agregar producto</button>
+        
+                    <table class="sales-table" id="product-summary" style="margin-top: 20px;">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Stock</th>
+                                <th>Precio Unitario</th>
+                                <th>Subtotal</th>
+                                <th>Eliminar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary-body">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+        
+                <!-- Sección de pagos -->
+                <div style="flex: 1;">
+                    <h3>💳 Pago</h3>
+                    <div class="form-group">
+                        <label for="payment_method">Método de pago:</label>
+                        <select name="payment_method" id="payment_method" required>
+                            <option value="">Seleccione...</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="transferencia">Transferencia</option>
+                        </select>
+                    </div>
+        
+                    <div class="form-group">
+                        <label for="money_received">Dinero recibido:</label>
+                        <input type="number" step="0.01" id="money_received" name="money_received" required>
+                    </div>
+        
+                    <div class="form-group">
+                        <label>Total a pagar:</label>
+                        <span id="total_display">$0.00</span>
+                    </div>
+        
+                    <div class="form-group">
+                        <label>Dinero a devolver:</label>
+                        <span id="change_display">$0.00</span>
+                    </div>
+        
+                    <button type="submit">💾 Registrar venta</button>
+                </div>
+            </div>
+        </form>
+    </div>
 
     {% if result %}
+    <div class="form-container">
+        <h2>Resultado:</h2>
         {% if result.status == "ok" %}
-            <div style="background-color: #d1fae5; padding: 10px; border-radius: 6px; color: #065f46; margin-bottom: 1rem;">
-                ✅ Venta registrada. Total: ${{ result.total }}
-            </div>
+            <p><strong>Total:</strong> ${{ result.total }}</p>
+            <p><strong>Cambio:</strong> ${{ result.change }}</p>
         {% else %}
-            <div style="background-color: #fee2e2; padding: 10px; border-radius: 6px; color: #991b1b; margin-bottom: 1rem;">
-                ❌ Error: {{ result.message }}
-            </div>
+            <p class="error-message">{{ result.message }}</p>
         {% endif %}
+    </div>
     {% endif %}
 
-    <!-- FORMULARIO -->
-    <form method="post" action="/process-sale"
-    oninput="calculateChange()"
-    style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;">
-
-    <!-- 🛒 PRODUCTO (ahora primero) -->
-    <div class="box-section" style="flex: 1;">
-        <h3>🛒 Producto</h3>
-
-        <label>Buscar producto:</label>
-        <input type="text" id="product-search" placeholder="Escribe el nombre..." oninput="filterProducts()" class="input-modern">
-
-        <label>Producto:</label>
-        <select name="product" id="product-select" required class="input-modern" onchange="updatePrice()">
-            {% for p in products %}
-                <option value="{{ p.name }}" data-price="{{ p.price }}">{{ p.name }} (Stock: {{ p.stock }})</option>
-            {% endfor %}
-        </select>
-
-        <label>Cantidad:</label>
-        <input type="number" name="quantity" id="quantity" min="1" required value="1" class="input-modern">
+    <div class="sales-summary form-container">
+        <h2>🧾Resumen del día</h2>
+        <ul>
+            <li><strong>Total vendido:</strong> ${{ resumen.total_vendido }}</li>
+            <li><strong>Productos vendidos:</strong> {{ resumen.productos_vendidos }}</li>
+            <li><strong>Número de ventas:</strong> {{ resumen.numero_ventas }}</li>
+        </ul>
     </div>
 
-    <!-- 💳 PAGO (más grande con flex: 1.5) -->
-    <div class="box-section" style="flex: 1.5;">
-        <h3>💳 Pago</h3>
-
-        <label>Método de Pago:</label>
-        <select name="payment_method" required class="input-modern">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Tarjeta">Tarjeta</option>
-            <option value="Nequi">Nequi</option>
-            <option value="Daviplata">Daviplata</option>
-        </select>
-
-        <label>💵 Dinero Recibido:</label>
-        <input type="number" id="money-received" min="0" placeholder="0.00" class="input-modern">
-
-        <label>🧾 Total de Venta:</label>
-        <input type="text" id="total-sale" readonly class="input-modern">
-
-        <div id="change-box" class="change-box">
-            Cambio a Devolver:<br>
-            <span id="change-due" style="font-size: 2rem;">$0.00</span>
-        </div>
-
-        <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
-            <button type="submit" class="btn-modern" onclick="return confirmSale()">💰 Vender</button>
-            <button type="reset" class="btn-modern btn-secondary">🧹 Limpiar</button>
-        </div>
+    <div class="export-buttons">
+        <a href="/export-excel" target="_blank"><button>📊 Exportar a Excel</button></a>
+        <a href="/export-pdf" target="_blank"><button>🧾 Exportar a PDF</button></a>
     </div>
 
-</form>
-
-    <!-- 📜 HISTORIAL -->
-    <div class="box-section sales-history" style="margin-top: 2rem;">
-
-        <h3>📜 Historial de Ventas</h3>
-
-        <div style="margin: 1rem 0;">
-            <a href="/export-sales-excel" class="btn-modern" style="background-color: #10b981;">⬇️ Exportar a Excel</a>
-            <a href="/export-sales-pdf" class="btn-modern" style="background-color: #ef4444;">⬇️ Exportar a PDF</a>
-        </div>
-
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
-                <thead style="background-color: #f3f4f6;">
-                    <tr>
-                        <th style="text-align: left; padding: 0.5rem;">Producto</th>
-                        <th style="text-align: left; padding: 0.5rem;">Cantidad</th>
-                        <th style="text-align: left; padding: 0.5rem;">Total</th>
-                        <th style="text-align: left; padding: 0.5rem;">Método de Pago</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sale in sales %}
-                        <tr style="border-bottom: 1px solid #e5e7eb;">
-                            <td style="padding: 0.5rem;">{{ sale.product }}</td>
-                            <td style="padding: 0.5rem;">{{ sale.quantity }}</td>
-                            <td style="padding: 0.5rem;">${{ sale.total }}</td>
-                            <td>{{ sale.payment_method }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="sales-history">
+        <h2>🧾Historial de ventas</h2>
+        <table class="sales-table">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Total</th>
+                    <th>Método de Pago</th>
+                    <th>Fecha</th>
+                    <th>Acción</th> <!-- Nueva columna -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in ventas %}
+                <tr>
+                    <td>{{ v.product.nombre }}</td>
+                    <td>{{ v.quantity }}</td>
+                    <td>${{ v.total }}</td>
+                    <td>{{ v.payment_method }}</td>
+                    <td>{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <form method="post" action="/delete-sale" onsubmit="return confirm('¿Seguro que deseas eliminar esta venta?');">
+                            <input type="hidden" name="sale_id" value="{{ v.id }}">
+                            <button type="submit" style="background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 5px;">
+                                ❌ Eliminar
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-</div>
-
-<!-- ESTILOS RESPONSIVOS Y MODERNOS -->
-<style>
-    .input-modern {
-        width: 100%;
-        padding: 0.7rem;
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
-        font-size: 1rem;
-        margin-bottom: 1rem;
-        background-color: #f9fafb;
-    }
-
-    .btn-modern {
-        background-color: #3b82f6;
-        color: white;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        border-radius: 8px;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: background-color 0.2s ease-in-out;
-    }
-
-    .btn-modern:hover {
-        background-color: #2563eb;
-    }
-
-    .btn-secondary {
-        background-color: #6b7280;
-    }
-
-    .box-section {
-        flex: 1;
-        min-width: 300px;
-        max-width: 100%;
-        padding: 1.5rem;
-        background-color: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-
-    .change-box {
-        background-color: #fef3c7;
-        color: #92400e;
-        border: 2px solid #fcd34d;
-        padding: 1rem;
-        border-radius: 12px;
-        font-size: 1.2rem;
-        font-weight: bold;
-        text-align: center;
-        margin-top: 1rem;
-    }
-
-    .sales-history table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 400px;
-    }
-
-    .sales-history th, .sales-history td {
-        padding: 0.75rem;
-        text-align: left;
-    }
-
-    @media (max-width: 768px) {
-        form {
-            flex-direction: column !important;
-            align-items: stretch !important;
-        }
-
-        .box-section {
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-
-        .btn-modern {
-            width: 100%;
-            text-align: center;
-        }
-
-        .sales-history table {
-            font-size: 0.9rem;
-        }
-
-        .sales-history th, .sales-history td {
-            padding: 0.5rem;
-        }
-    }
-</style>
-
-<!-- SCRIPT -->
 <script>
-    function updatePrice() {
-        calculateChange();
-    }
-
-    function calculateChange() {
-        const select = document.getElementById("product-select");
-        const selectedOption = select.options[select.selectedIndex];
-        const price = parseFloat(selectedOption.dataset.price || 0);
-        const quantity = parseInt(document.getElementById("quantity").value) || 0;
-        const received = parseFloat(document.getElementById("money-received").value) || 0;
-
-        const total = price * quantity;
-        const change = received - total;
-
-        document.getElementById("total-sale").value = total.toFixed(2);
-        document.getElementById("change-due").textContent = "$" + (change >= 0 ? change.toFixed(2) : "0.00");
-    }
+    const productos = [
+        {% for p in productos %}
+        {
+            nombre: "{{ p.nombre }}",
+            precio: {{ p.precio }},
+            stock: {{ p.stock }}
+        },
+        {% endfor %}
+    ];
 
     function filterProducts() {
-        const input = document.getElementById("product-search").value.toLowerCase();
-        const select = document.getElementById("product-select");
-        const options = select.options;
-
-        for (let i = 0; i < options.length; i++) {
-            const optionText = options[i].text.toLowerCase();
-            options[i].style.display = optionText.includes(input) ? "block" : "none";
+        const search = document.getElementById('search').value.toLowerCase();
+        const options = productos.filter(p => p.nombre.toLowerCase().includes(search));
+        if (options.length === 1) {
+            addProduct(options[0]);
+            document.getElementById('search').value = '';  // limpia el input
         }
-
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].style.display === "block") {
-                select.selectedIndex = i;
-                break;
-            }
-        }
-
-        calculateChange();
     }
 
-    function confirmSale() {
-        return confirm("¿Deseas confirmar la venta?");
+    function addProduct(product = null) {
+    if (!product) {
+        const search = document.getElementById('search').value.toLowerCase();
+        product = productos.find(p => p.nombre.toLowerCase().includes(search));
+        if (!product) {
+            alert("Producto no encontrado");
+            return;
+        }
     }
+
+    const tbody = document.getElementById('summary-body');
+    
+    // Verificar si el producto ya existe en la tabla
+    const existingRow = Array.from(tbody.rows).find(row => {
+        return row.querySelector('input[name="product"]').value === product.nombre;
+    });
+
+    if (existingRow) {
+        alert("Este producto ya está en la venta.");
+        return;
+    }
+
+    const row = document.createElement('tr');
+row.innerHTML = `
+    <td>
+        <input type="hidden" name="product" value="${product.nombre}">
+        ${product.nombre}
+    </td>
+    <td>
+        <input type="number" name="quantity" value="1" min="1" max="${product.stock}" onchange="calculateTotals()">
+    </td>
+    <td>${product.stock}</td>
+    <td>$${product.precio.toFixed(2)}</td>
+    <td class="subtotal">$${product.precio.toFixed(2)}</td>
+    <td><button type="button" onclick="removeRow(this)">❌</button></td>
+`;
+
+// Agregar la fila a la tabla de productos seleccionados
+tbody.appendChild(row);
+
+// Llamar a la función para actualizar los totales
+calculateTotals();
+}
+
+
+function removeRow(button) {
+    const row = button.closest('tr');
+    row.remove();
+    calculateTotals();
+}
+
+function calculateTotals() {
+    let total = 0;
+
+    const rows = document.querySelectorAll('#summary-body tr');
+    rows.forEach(row => {
+        const price = parseFloat(row.children[3].textContent.replace('$', ''));
+        const qtyInput = row.querySelector('input[name="quantity"]');
+        const quantity = parseInt(qtyInput.value);
+        const maxStock = parseInt(qtyInput.getAttribute("max"));
+
+        if (quantity > maxStock) {
+            alert(`La cantidad ingresada para "${row.children[0].textContent.trim()}" supera el stock disponible (${maxStock}).`);
+            qtyInput.value = maxStock;
+        }
+
+        const validQty = Math.min(quantity, maxStock);
+        const subtotal = price * validQty;
+
+        // Actualizar el campo de subtotal
+        const subtotalCell = row.querySelector('.subtotal');
+        subtotalCell.textContent = `$${subtotal.toFixed(2)}`;
+
+        total += subtotal;
+    });
+
+    document.getElementById('total_display').textContent = `$${total.toFixed(2)}`;
+
+    const moneyReceived = parseFloat(document.getElementById('money_received').value) || 0;
+    const change = moneyReceived - total;
+    document.getElementById('change_display').textContent = `$${change.toFixed(2)}`;
+}
 </script>
+
+<div style="text-align: center; margin-top: 40px;">
+    <a href="/menu">
+        <button type="button" style="background-color: #6c757d; padding: 12px 24px; font-size: 16px; border-radius: 8px;">
+            ⬅️ Volver al menú
+        </button>
+    </a>
+</div>
+
+</body>
+</html>
