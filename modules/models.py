@@ -23,6 +23,7 @@ class Product(Base):
     descripcion = Column(String(255))
     stock = Column(Integer, nullable=False)
     precio = Column(Float, nullable=False)
+    codigo_barras = Column(String, unique=True, nullable=True)
 
     sales = relationship("Sale", back_populates="product")
 

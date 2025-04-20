@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Inventario</title>
     <div style="text-align: right; margin: 20px 40px 0 0;">
-        <a href="/">
+        <a href="/menu">
             <button style="background-color: hsl(208, 7%, 46%); color: white; padding: 10px 15px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
                 ⬅️ Volver al menú
             </button>
@@ -59,33 +60,39 @@
         }
 
         .botones-acciones {
-            display: flex;
-            gap: 5px;
-            justify-content: center;
-            align-items: center;
-        }
+        display: flex;
+        gap: 5px;
+        justify-content: center;
+        align-items: center;
+        height: 100%; /* Añade esto para ocupar toda la altura de la celda */
+    }
 
-        .botones-acciones button {
-            padding: 6px 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
+    .botones-acciones button {
+        padding: 6px 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 30px; /* Altura fija para ambos botones */
+    }
 
         .btn-editar {
-            background-color: #d8dce0;
-            color: white;
-        }
+        background-color: #d8dce0;
+        color: white;
+        transform: translateY(-1px); /* Mueve el icono 1px hacia arriba */
+        /* o */
+        position: relative;
+        top: -1px; /* Otra alternativa para moverlo hacia arriba */
+    }
 
-        .btn-editar:hover {
-            background-color: #f0f2f3;
-        }
-
-        .btn-eliminar {
-            background-color: #e2dddd;
-            color: white;
-        }
+    .btn-eliminar {
+        background-color: #e2dddd;
+        color: white;
+        padding-top: 4px; /* Ajuste fino para alinear el emoji */
+    }
 
         .btn-eliminar:hover {
             background-color: #e2d4d4;
@@ -164,6 +171,38 @@
             font-size: 24px;
             cursor: pointer;
         }
+
+        /* Estilos para el código de barras */
+        .barcode-section {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+
+        .barcode-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .barcode-label span {
+            margin-left: 5px;
+        }
+
+        .barcode-generate-btn {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .barcode-generate-btn:hover {
+            background-color: #0b7dda;
+        }
     </style>
 </head>
 <body>
@@ -171,7 +210,7 @@
     <h1>Inventario de Productos</h1>
 
     <div class="search-container">
-        <input type="text" class="search" id="busqueda" placeholder="Buscar producto por nombre...">
+        <input type="text" class="search" id="busqueda" placeholder="Buscar producto por nombre o código de barras...">
     </div>
 
     <button class="btn-agregar" onclick="document.getElementById('modalAgregar').style.display='block'">➕ Agregar nuevo producto</button>
@@ -183,6 +222,7 @@
             <th>Descripción</th>
             <th>Precio</th>
             <th>Stock</th>
+            <th>Código Barras</th>
             <th>Acciones</th>
         </tr>
         {% for producto in productos %}
@@ -192,9 +232,10 @@
             <td>{{ producto.descripcion }}</td>
             <td>${{ producto.precio }}</td>
             <td>{{ producto.stock }}</td>
+            <td>{{ producto.codigo_barras or 'N/A' }}</td>
             <td>
                 <div class="botones-acciones">
-                    <button class="btn-editar" onclick="abrirModalEditar('{{ producto.id }}', '{{ producto.nombre }}', '{{ producto.descripcion }}', '{{ producto.precio }}', '{{ producto.stock }}')">✏️</button>
+                    <button class="btn-editar" onclick="abrirModalEditar('{{ producto.id }}', '{{ producto.nombre }}', '{{ producto.descripcion }}', '{{ producto.precio }}', '{{ producto.stock }}', '{{ producto.codigo_barras or "" }}')">✏️</button>
                     <form method="post" action="/inventario/eliminar/{{ producto.id }}" onsubmit="return confirm('¿Estás seguro de eliminar este producto?')">
                         <button class="btn-eliminar" type="submit">🗑️</button>
                     </form>
@@ -212,12 +253,25 @@
             <form method="post" action="/inventario">
                 <label>Nombre:</label>
                 <input type="text" name="nombre" required>
+                
                 <label>Descripción:</label>
                 <input type="text" name="descripcion">
+                
                 <label>Precio:</label>
                 <input type="number" name="precio" step="0.01" required>
+                
                 <label>Stock:</label>
                 <input type="number" name="stock" required>
+                
+                <div class="barcode-section">
+                    <label>Código de Barras:</label>
+                    <div class="barcode-label">
+                        <input type="text" name="codigo_barras" id="codigo_barras" placeholder="Escanea o ingresa manualmente">
+                        <button type="button" class="barcode-generate-btn" onclick="generarCodigoBarras()">Generar</button>
+                    </div>
+                    <small>Dejar vacío para no asignar código</small>
+                </div>
+                
                 <button type="submit">Agregar</button>
             </form>
         </div>
@@ -231,33 +285,51 @@
             <form method="post" id="formEditar" action="">
                 <label>Nombre:</label>
                 <input type="text" name="nombre" id="edit-nombre" required>
+                
                 <label>Descripción:</label>
                 <input type="text" name="descripcion" id="edit-descripcion">
+                
                 <label>Precio:</label>
                 <input type="number" name="precio" step="0.01" id="edit-precio" required>
+                
                 <label>Stock:</label>
                 <input type="number" name="stock" id="edit-stock" required>
+                
+                <div class="barcode-section">
+                    <label>Código de Barras:</label>
+                    <div class="barcode-label">
+                        <input type="text" name="codigo_barras" id="edit-codigo_barras" placeholder="Escanea o ingresa manualmente">
+                        <button type="button" class="barcode-generate-btn" onclick="generarCodigoBarras('edit')">Generar</button>
+                    </div>
+                    <small>Dejar vacío para eliminar código</small>
+                </div>
+                
                 <button type="submit">Actualizar</button>
             </form>
         </div>
     </div>
 
     <script>
+        // Función para buscar productos
         document.getElementById("busqueda").addEventListener("keyup", function() {
             let filtro = this.value.toLowerCase();
             let filas = document.querySelectorAll("#tablaProductos tr:not(:first-child)");
+            
             filas.forEach(function(fila) {
                 let nombre = fila.cells[1].textContent.toLowerCase();
-                fila.style.display = nombre.includes(filtro) ? "" : "none";
+                let codigo = fila.cells[5].textContent.toLowerCase();
+                fila.style.display = (nombre.includes(filtro) || codigo.includes(filtro)) ? "" : "none";
             });
         });
 
-        function abrirModalEditar(id, nombre, descripcion, precio, stock) {
+        // Función para abrir modal de edición con datos del producto
+        function abrirModalEditar(id, nombre, descripcion, precio, stock, codigo_barras) {
             // Rellenar los campos del formulario
             document.getElementById("edit-nombre").value = nombre;
             document.getElementById("edit-descripcion").value = descripcion;
             document.getElementById("edit-precio").value = precio;
             document.getElementById("edit-stock").value = stock;
+            document.getElementById("edit-codigo_barras").value = codigo_barras;
 
             // Actualizar la acción del formulario con el ID del producto
             const formEditar = document.getElementById("formEditar");
@@ -267,12 +339,34 @@
             document.getElementById("modalEditar").style.display = "block";
         }
 
+        // Función para generar código de barras aleatorio
+        function generarCodigoBarras(prefix = '') {
+            const chars = '0123456789';
+            let result = '';
+            for (let i = 0; i < 13; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById(`${prefix}codigo_barras`).value = result;
+        }
+
         // Cerrar el modal al hacer clic fuera
         window.onclick = function(event) {
             if (event.target.classList.contains("modal")) {
                 event.target.style.display = "none";
             }
         };
+
+        // Configurar el input de código de barras para capturar escaneos
+        document.getElementById('codigo_barras').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+            }
+        });
+
+        // Auto-focus en el campo de código de barras al abrir el modal
+        document.getElementById('modalAgregar').addEventListener('shown', function() {
+            document.getElementById('codigo_barras').focus();
+        });
     </script>
 
 </body>

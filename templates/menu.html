@@ -26,6 +26,9 @@
             padding: 10px 25px;
             font-weight: 500;
         }
+        .logout-btn {
+            margin-left: 15px;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -37,7 +40,7 @@
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <div class="collapse navbar-collapse justify-content-between" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link" href="/inventario"><i class="fas fa-boxes"></i> Inventario</a>
@@ -46,6 +49,13 @@
                     <a class="nav-link" href="/sales"><i class="fas fa-cash-register"></i> Ventas</a>
                 </li>
             </ul>
+            <div class="d-flex">
+                <form action="/logout" method="post" class="logout-btn">
+                    <button type="submit" class="btn btn-outline-light">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </nav>
@@ -73,7 +83,7 @@
                     <i class="fas fa-user-plus text-info mb-3"></i>
                     <h5 class="card-title">Crear Usuario</h5>
                     <p class="card-text">Administra nuevos usuarios del sistema.</p>
-                    <a href="/crear-usuario" class="btn btn-info btn-custom text-white">Ir a Crear Usuario</a>
+                    <a href="/usuarios" class="btn btn-info btn-custom text-white">Ir a Crear Usuario</a>
                 </div>
             </div>
         </div>
@@ -88,8 +98,6 @@
                 </div>
             </div>
         </div>
-
-
 
         <div class="col-md-4">
             <div class="card text-center shadow-sm h-100 p-3">
@@ -107,3 +115,5 @@
 
 <!-- Scripts de Bootstrap -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

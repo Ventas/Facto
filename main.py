@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from Routes import auth, inventario,sales, Proveedor
 from modules import models
 from Database import engine
@@ -11,6 +12,7 @@ import hashlib
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Inventario & Facturación")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(auth.router)
 app.include_router(inventario.router)
@@ -23,6 +25,10 @@ app.include_router(Proveedor.router)
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/login")
+
 # Ruta principal con menú
 @app.get("/menu", response_class=HTMLResponse)
 async def menu_principal(request: Request):
@@ -32,6 +38,14 @@ async def menu_principal(request: Request):
 @app.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
+
+# @app.post("/logout")
+# async def logout(request: Request):
+#     # Ejemplo: Limpiar cookies de sesión
+#     response = RedirectResponse(url="/login", status_code=HTTP_302_FOUND)
+#     response.delete_cookie("session_token")  # Si usas cookies
+#     # Otra lógica de limpieza de sesión si es necesario
+#     return response
 
 @app.post("/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
@@ -62,17 +76,19 @@ async def login(request: Request, username: str = Form(...), password: str = For
         "error": "Usuario o contraseña incorrectos"
     })
 
+# Crear usuario (vista vacía, redirige a usuarios con form vacío)
 @app.get("/crear-usuario", response_class=HTMLResponse)
 async def crear_usuario_form(request: Request):
-    return templates.TemplateResponse("crear_usuario.html", {"request": request})
+    return templates.TemplateResponse("usuarios.html", {"request": request, "usuario": None, "usuarios": []})
 
+# Mostrar todos los usuarios
 @app.get("/usuarios", response_class=HTMLResponse)
 async def mostrar_usuarios(request: Request):
     with engine.connect() as conn:
-        result = conn.execute(text("SELECT * FROM StoreUser"))
-        usuarios = [dict(row) for row in result]
+        usuarios = conn.execute(text("SELECT * FROM StoreUser")).mappings().all()
     return templates.TemplateResponse("usuarios.html", {"request": request, "usuarios": usuarios, "usuario": None})
 
+# Guardar o actualizar usuario
 @app.post("/usuarios/guardar")
 async def guardar_usuario(
     request: Request,
@@ -92,7 +108,13 @@ async def guardar_usuario(
                             SET nombre=:nombre, username=:username, password=:password, rol=:rol
                             WHERE id=:id
                         """),
-                        {"id": id, "nombre": nombre, "username": username, "password": password, "rol": rol}
+                        {
+                            "id": id,
+                            "nombre": nombre,
+                            "username": username,
+                            "password": hash_password(password),
+                            "rol": rol
+                        }
                     )
                 else:
                     conn.execute(
@@ -101,7 +123,12 @@ async def guardar_usuario(
                             SET nombre=:nombre, username=:username, rol=:rol
                             WHERE id=:id
                         """),
-                        {"id": id, "nombre": nombre, "username": username, "rol": rol}
+                        {
+                            "id": id,
+                            "nombre": nombre,
+                            "username": username,
+                            "rol": rol
+                        }
                     )
             else:  # Crear nuevo
                 conn.execute(
@@ -109,10 +136,16 @@ async def guardar_usuario(
                         INSERT INTO StoreUser (nombre, username, password, rol)
                         VALUES (:nombre, :username, :password, :rol)
                     """),
-                    {"nombre": nombre, "username": username, "password": password, "rol": rol}
+                    {
+                        "nombre": nombre,
+                        "username": username,
+                        "password": hash_password(password),
+                        "rol": rol
+                    }
                 )
             conn.commit()
         return RedirectResponse(url="/usuarios", status_code=HTTP_302_FOUND)
+
     except Exception as e:
         return templates.TemplateResponse("usuarios.html", {
             "request": request,
@@ -120,8 +153,80 @@ async def guardar_usuario(
             "usuarios": [],
             "usuario": None
         })
-    
-    
+
+# Editar usuario
+@app.get("/usuarios/editar/{usuario_id}", response_class=HTMLResponse)
+async def editar_usuario(request: Request, usuario_id: int):
+    with engine.connect() as conn:
+        usuario = conn.execute(
+            text("SELECT * FROM StoreUser WHERE id = :id"), {"id": usuario_id}
+        ).mappings().fetchone()
+
+        usuarios = conn.execute(text("SELECT * FROM StoreUser")).mappings().all()
+
+    if usuario:
+        return templates.TemplateResponse("usuarios.html", {
+            "request": request,
+            "usuario": usuario,
+            "usuarios": usuarios
+        })
+    else:
+        return RedirectResponse(url="/usuarios", status_code=HTTP_302_FOUND)
+
+# Eliminar usuario
+@app.post("/usuarios/eliminar/{usuario_id}")
+async def eliminar_usuario(usuario_id: int):
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM StoreUser WHERE id = :id"), {"id": usuario_id})
+        conn.commit()
+    return RedirectResponse(url="/usuarios", status_code=HTTP_302_FOUND)
+
+# Mostrar formulario de cambio de contraseña
+@app.get("/cambiar-password", response_class=HTMLResponse)
+def cambiar_password_form(request: Request, username: str = ""):
+    return templates.TemplateResponse("cambiar_password.html", {"request": request, "username": username})
+
+# Procesar formulario de cambio de contraseña
+@app.post("/cambiar-password", response_class=HTMLResponse)
+async def cambiar_password(
+    request: Request,
+    username: str = Form(...),
+    actual_password: str = Form(...),
+    nueva_password: str = Form(...)
+):
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT * FROM StoreUser WHERE username = :username"),
+            {"username": username}
+        ).mappings().fetchone()
+
+        if result:
+            if result["password"] == (actual_password):
+                # Actualizar la contraseña
+                conn.execute(
+                    text("UPDATE StoreUser SET password = :password WHERE username = :username"),
+                    {
+                        "password": (nueva_password),
+                        "username": username
+                    }
+                )
+                conn.commit()
+                return templates.TemplateResponse("cambiar_password.html", {
+                    "request": request,
+                    "mensaje": "Contraseña actualizada correctamente"
+                })
+            else:
+                return templates.TemplateResponse("cambiar_password.html", {
+                    "request": request,
+                    "error": "La contraseña actual es incorrecta"
+                })
+        else:
+            return templates.TemplateResponse("cambiar_password.html", {
+                "request": request,
+                "error": "Usuario no encontrado"
+            })
+
+# Ejecutar en desarrollo
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -4,13 +4,35 @@
     <meta charset="UTF-8">
     <title>Venta de productos</title>
     <div style="text-align: right; margin-bottom: 10px;">
-        <a href="/">
+        <a href="/menu">
             <button type="button" style="background-color: #6c757d;">
                 ⬅️ Volver al menú
             </button>
         </a>
     </div>
     <style>
+
+            /* Agregar este estilo nuevo */
+            .barcode-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+        }
+        .barcode-input {
+            width: 70%;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .barcode-btn {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f2f5;
@@ -132,6 +154,18 @@
 
     <div class="form-container">
         <h1>Venta de productos</h1>
+
+        <div class="barcode-section">
+            <h3>📷 Escanear código de barras</h3>
+            <input type="text" id="barcode-input" class="barcode-input" placeholder="Escanea un código de barras..." autofocus>
+            <button class="barcode-btn" onclick="scanBarcode()">Buscar</button>
+        </div>
+        
+        <form method="post" action="/process-sale" onsubmit="return validateForm()">
+            <!-- Resto del formulario permanece igual -->
+        </form>
+    </div>
+
         <form method="post" action="/process-sale" onsubmit="return validateForm()">
             <div style="display: flex; gap: 40px; align-items: flex-start;">
                 <!-- Sección de productos -->
@@ -327,38 +361,112 @@ function removeRow(button) {
 }
 
 function calculateTotals() {
-    let total = 0;
+        let total = 0;
 
-    const rows = document.querySelectorAll('#summary-body tr');
-    rows.forEach(row => {
-        const price = parseFloat(row.children[3].textContent.replace('$', ''));
-        const qtyInput = row.querySelector('input[name="quantity"]');
-        const quantity = parseInt(qtyInput.value);
-        const maxStock = parseInt(qtyInput.getAttribute("max"));
+        const rows = document.querySelectorAll('#summary-body tr');
+        rows.forEach(row => {
+            const price = parseFloat(row.children[3].textContent.replace('$', ''));
+            const qtyInput = row.querySelector('input[name="quantity"]');
+            const quantity = parseInt(qtyInput.value);
+            const maxStock = parseInt(qtyInput.getAttribute("max"));
 
-        if (quantity > maxStock) {
-            alert(`La cantidad ingresada para "${row.children[0].textContent.trim()}" supera el stock disponible (${maxStock}).`);
-            qtyInput.value = maxStock;
+            if (quantity > maxStock) {
+                alert(`La cantidad ingresada para "${row.children[0].textContent.trim()}" supera el stock disponible (${maxStock}).`);
+                qtyInput.value = maxStock;
+                return;
+            }
+
+            const subtotal = price * quantity;
+            const subtotalCell = row.querySelector('.subtotal');
+            subtotalCell.textContent = `$${subtotal.toFixed(2)}`;
+
+            total += subtotal;
+        });
+
+        // Corregido el ID (de total_display a total_display)
+        document.getElementById('total_display').textContent = `$${total.toFixed(2)}`;
+
+        const moneyReceived = parseFloat(document.getElementById('money_received').value) || 0;
+        const change = moneyReceived - total;
+        
+        // Mostrar el cambio (rojo si es negativo)
+        const changeDisplay = document.getElementById('change_display');
+        changeDisplay.textContent = `$${Math.abs(change).toFixed(2)}`;
+        
+        if (change < 0) {
+            changeDisplay.style.color = '#dc3545';
+            changeDisplay.style.backgroundColor = '#ffe6e6';
+        } else {
+            changeDisplay.style.color = '#28a745';
+            changeDisplay.style.backgroundColor = '#e9fce9';
         }
+    }
 
-        const validQty = Math.min(quantity, maxStock);
-        const subtotal = price * validQty;
+    // Agregar event listener para el campo money_received
+    document.getElementById('money_received').addEventListener('input', calculateTotals);
+    document.getElementById('money_received').addEventListener('change', calculateTotals);
 
-        // Actualizar el campo de subtotal
-        const subtotalCell = row.querySelector('.subtotal');
-        subtotalCell.textContent = `$${subtotal.toFixed(2)}`;
+    // Llamar a calculateTotals al cargar la página para inicializar valores
+    document.addEventListener('DOMContentLoaded', calculateTotals);
 
-        total += subtotal;
+    // Función para manejar el escaneo de código de barras
+    async function scanBarcode() {
+        const barcode = document.getElementById('barcode-input').value.trim();
+        if (!barcode) return;
+        
+        try {
+            // Opción 1: Buscar directamente en los productos cargados
+            const producto = productos.find(p => p.codigo_barras === barcode);
+            
+            if (producto) {
+                addProduct(producto);
+                document.getElementById('barcode-input').value = '';
+                document.getElementById('barcode-input').focus();
+            } else {
+                // Opción 2: Hacer una petición al servidor si no se encuentra localmente
+                const response = await fetch('/get-product-by-barcode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `barcode=${encodeURIComponent(barcode)}`
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === "ok") {
+                    addProduct(data.product);
+                    document.getElementById('barcode-input').value = '';
+                    document.getElementById('barcode-input').focus();
+                } else {
+                    alert(data.message || "Producto no encontrado");
+                }
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Error al buscar el producto");
+        }
+    }
+
+    // Configurar eventos del escáner
+    document.getElementById('barcode-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            scanBarcode();
+        }
     });
 
-    document.getElementById('total_display').textContent = `$${total.toFixed(2)}`;
+    let barcodeTimer;
+    document.getElementById('barcode-input').addEventListener('input', function(e) {
+        clearTimeout(barcodeTimer);
+        barcodeTimer = setTimeout(() => {
+            if (this.value.length > 3) {
+                scanBarcode();
+            }
+        }, 100);
+    });
 
-    const moneyReceived = parseFloat(document.getElementById('money_received').value) || 0;
-    const change = moneyReceived - total;
-    document.getElementById('change_display').textContent = `$${change.toFixed(2)}`;
-}
 </script>
-
 <div style="text-align: center; margin-top: 40px;">
     <a href="/menu">
         <button type="button" style="background-color: #6c757d; padding: 12px 24px; font-size: 16px; border-radius: 8px;">

@@ -126,3 +126,18 @@ def delete_sale(sale_id: int = Form(...), db: Session = Depends(get_db)):
     db.commit()
 
     return RedirectResponse(url="/sales", status_code=303)
+
+@router.post("/get-product-by-barcode")
+def get_product_by_barcode(barcode: str = Form(...), db: Session = Depends(get_db)):
+    producto = db.query(models.Product).filter(models.Product.codigo_barras == barcode).first()
+    
+    if producto:
+        return {
+            "status": "ok",
+            "product": {
+                "nombre": producto.nombre,
+                "precio": producto.precio,
+                "stock": producto.stock
+            }
+        }
+    return {"status": "error", "message": "Producto no encontrado"}
