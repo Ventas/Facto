@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from Routes import auth, inventario,sales, Proveedor
@@ -8,6 +8,14 @@ from fastapi.responses import HTMLResponse , RedirectResponse
 from sqlalchemy import text
 from starlette.status import HTTP_302_FOUND
 import hashlib
+from openpyxl import Workbook
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import datetime
+from openpyxl import Workbook
+
+
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -33,6 +41,7 @@ async def root():
 @app.get("/menu", response_class=HTMLResponse)
 async def menu_principal(request: Request):
     return templates.TemplateResponse("menu.html", {"request": request})
+
 
 # Mostrar el formulario de login
 @app.get("/login", response_class=HTMLResponse)

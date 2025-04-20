@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
     <title>Venta de productos</title>
     <div style="text-align: right; margin-bottom: 10px;">
         <a href="/menu">
@@ -249,11 +251,30 @@
             <li><strong>Número de ventas:</strong> {{ resumen.numero_ventas }}</li>
         </ul>
     </div>
-
     <div class="export-buttons">
-        <a href="/export-excel" target="_blank"><button>📊 Exportar a Excel</button></a>
-        <a href="/export-pdf" target="_blank"><button>🧾 Exportar a PDF</button></a>
+        <a href="/export-sales-excel">
+            <button type="button" style="background-color: #28a745; color: white; padding: 10px 20px; font-size: 16px; border: none; border-radius: 8px;">
+                <i class="bi bi-file-earmark-excel" style="margin-right: 8px;"></i> Exportar Excel (Hoy)
+            </button>
+        </a>
+        <a href="/export-sales-pdf">
+            <button type="button" style="background-color: #dc3545; color: white; padding: 10px 20px; font-size: 16px; border: none; border-radius: 8px;">
+                <i class="bi bi-file-earmark-pdf" style="margin-right: 8px;"></i> Exportar PDF (Hoy)
+            </button>
+        </a>
     </div>
+
+    <div style="margin-top: 20px;">
+        <form action="/export-sales-by-date" method="get" style="display: flex; align-items: center; gap: 10px;">
+            <label for="selected_date" style="font-weight: bold;">Exportar ventas por fecha:</label>
+            <input type="date" id="selected_date" name="selected_date" required 
+                   style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+            
+            <button type="submit" style="background-color: #007bff; color: white; padding: 10px 15px; font-size: 16px; border: none; border-radius: 8px;">
+                <i class="bi bi-download" style="margin-right: 6px;"></i> Exportar por fecha
+            </button>
+        </form>
+    </div
 
     <div class="sales-history">
         <h2>🧾Historial de ventas</h2>
