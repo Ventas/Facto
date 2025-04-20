@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pyodbc
+python-multipart
+mysql-connector-python
+reportlab
+numpy
+matplotlib
+pandas
