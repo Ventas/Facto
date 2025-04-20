@@ -11,3 +11,5 @@ sqlalchemy
 python-dotenv
 pymysql
 jinja2
+openpyxl
+typing
