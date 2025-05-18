@@ -48,13 +48,13 @@ async def menu_principal(request: Request):
 async def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# @app.post("/logout")
-# async def logout(request: Request):
-#     # Ejemplo: Limpiar cookies de sesión
-#     response = RedirectResponse(url="/login", status_code=HTTP_302_FOUND)
-#     response.delete_cookie("session_token")  # Si usas cookies
-#     # Otra lógica de limpieza de sesión si es necesario
-#     return response
+@app.post("/logout")
+async def logout(request: Request):
+    # Ejemplo: Limpiar cookies de sesión
+    response = RedirectResponse(url="/login", status_code=HTTP_302_FOUND)
+    response.delete_cookie("session_token")  # Si usas cookies
+    # Otra lógica de limpieza de sesión si es necesario
+    return response
 
 @app.post("/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
