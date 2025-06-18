@@ -222,6 +222,7 @@
             <th>Descripción</th>
             <th>Precio</th>
             <th>Stock</th>
+            <th>Stock</th>
             <th>Código Barras</th>
             <th>Acciones</th>
         </tr>
@@ -231,11 +232,11 @@
             <td>{{ producto.nombre }}</td>
             <td>{{ producto.descripcion }}</td>
             <td>${{ producto.precio }}</td>
-            <td>{{ producto.stock }}</td>
+            <td>{{ producto.stock }} {{ producto.unidad_stock }}</td>
             <td>{{ producto.codigo_barras or 'N/A' }}</td>
             <td>
                 <div class="botones-acciones">
-                    <button class="btn-editar" onclick="abrirModalEditar('{{ producto.id }}', '{{ producto.nombre }}', '{{ producto.descripcion }}', '{{ producto.precio }}', '{{ producto.stock }}', '{{ producto.codigo_barras or "" }}')">✏️</button>
+                    <button class="btn-editar" onclick="abrirModalEditar('{{ producto.id }}', '{{ producto.nombre }}', '{{ producto.descripcion }}', '{{ producto.precio }}', '{{ producto.stock }}','{{ producto.unidad_stock }}', '{{ producto.codigo_barras or "" }}')">✏️</button>
                     <form method="post" action="/inventario/eliminar/{{ producto.id }}" onsubmit="return confirm('¿Estás seguro de eliminar este producto?')">
                         <button class="btn-eliminar" type="submit">🗑️</button>
                     </form>
@@ -262,6 +263,11 @@
                 
                 <label>Stock:</label>
                 <input type="number" name="stock" required>
+                <select name="unidad_stock" required>
+                <option value="unidades">Unidades</option>
+                <option value="gramos">Gramos</option>
+                <option value="kilogramos">Kilogramos</option>
+                </select>
                 
                 <div class="barcode-section">
                     <label>Código de Barras:</label>
@@ -294,7 +300,12 @@
                 
                 <label>Stock:</label>
                 <input type="number" name="stock" id="edit-stock" required>
-                
+                <select name="unidad_stock" id="edit-unidad_stock" required>
+                <option value="unidades">Unidades</option>
+                <option value="gramos">Gramos</option>
+                <option value="kilogramos">Kilogramos</option>
+                </select>
+                        
                 <div class="barcode-section">
                     <label>Código de Barras:</label>
                     <div class="barcode-label">
@@ -323,13 +334,14 @@
         });
 
         // Función para abrir modal de edición con datos del producto
-        function abrirModalEditar(id, nombre, descripcion, precio, stock, codigo_barras) {
+        function abrirModalEditar(id, nombre, descripcion, precio, stock,unidad_stock, codigo_barras) {
             // Rellenar los campos del formulario
             document.getElementById("edit-nombre").value = nombre;
             document.getElementById("edit-descripcion").value = descripcion;
             document.getElementById("edit-precio").value = precio;
             document.getElementById("edit-stock").value = stock;
-            document.getElementById("edit-codigo_barras").value = codigo_barras;
+            document.getElementById("edit-unidad_stock").value = unidad_stock;
+            document.getElementById("edit-codigo_barras").value = codigo_barras
 
             // Actualizar la acción del formulario con el ID del producto
             const formEditar = document.getElementById("formEditar");

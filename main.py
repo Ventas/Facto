@@ -15,6 +15,8 @@ from reportlab.pdfgen import canvas
 import datetime
 from openpyxl import Workbook
 
+SCALE_PORT = 'COM3'  # o '/dev/ttyUSB0' en Linux
+SCALE_BAUDRATE = 9600
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -27,6 +29,8 @@ app.include_router(inventario.router)
 app.include_router(sales.router)
 templates = Jinja2Templates(directory="templates")
 app.include_router(Proveedor.router)
+
+
 
 
 # ✅ Función para cifrar contraseñas con SHA-256

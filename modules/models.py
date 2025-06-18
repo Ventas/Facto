@@ -22,6 +22,7 @@ class Product(Base):
     nombre = Column(String(100), nullable=False)
     descripcion = Column(String(255))
     stock = Column(Integer, nullable=False)
+    unidad_stock = Column(String(100), nullable=False)
     precio = Column(Float, nullable=False)
     codigo_barras = Column(String, unique=True, nullable=True)
 

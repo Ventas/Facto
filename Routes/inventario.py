@@ -20,6 +20,7 @@ def agregar_producto(
     descripcion: str = Form(""),
     precio: float = Form(...),
     stock: int = Form(...),
+    unidad_stock: str = Form(...),
     codigo_barras: str = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -28,6 +29,7 @@ def agregar_producto(
         descripcion=descripcion,
         precio=precio,
         stock=stock,
+        unidad_stock=unidad_stock,
         codigo_barras=codigo_barras if codigo_barras else None
     )
     db.add(nuevo_producto)
@@ -55,6 +57,7 @@ def editar_producto(
     descripcion: str = Form(""),
     precio: float = Form(...),
     stock: int = Form(...),
+    unidad_stock: str = Form(...),
     codigo_barras: str = Form(None),
     db: Session = Depends(get_db)
 ):
@@ -64,6 +67,7 @@ def editar_producto(
         producto.descripcion = descripcion
         producto.precio = precio
         producto.stock = stock
+        producto.unidad_stock = unidad_stock,
         producto.codigo_barras = codigo_barras if codigo_barras else None
         db.commit()
     return RedirectResponse(url="/inventario", status_code=303)

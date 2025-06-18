@@ -15,7 +15,6 @@ from reportlab.pdfgen import canvas
 from datetime import datetime
 
 
-
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
@@ -188,7 +187,6 @@ def export_sales_excel(db: Session = Depends(get_db)):
     wb.save(file_path)
 
     return FileResponse(path=file_path, filename="ventas_dia.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
 
 @router.get("/export-sales-by-date")
 async def export_sales_by_date(selected_date: str, db: Session = Depends(get_db)):
