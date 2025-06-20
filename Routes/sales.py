@@ -69,6 +69,10 @@ def process_sale(
     # Inicializa total_general al principio
     total_general = 0
     sales_to_save = []
+    
+    # Generar un ID de grupo único para esta venta (manejo seguro cuando la tabla está vacía)
+    max_group_id = db.query(func.max(models.Sale.sale_group_id)).scalar()
+    sale_group_id = 1 if max_group_id is None else max_group_id + 1
 
     for p, q in zip(product, quantity):
         selected_product = db.query(models.Product).filter(models.Product.nombre == p).first()
@@ -83,15 +87,18 @@ def process_sale(
             })
 
         total = selected_product.precio * q
-        total_general += total  # Ahora total_general está definida
+        total_general += total
         selected_product.stock -= q
 
-        sales_to_save.append(models.Sale(
+        new_sale = models.Sale(
+            sale_group_id=sale_group_id,
             product_id=selected_product.id,
             quantity=q,
             total=total,
             payment_method=payment_method
-        ))
+        )
+        sales_to_save.append(new_sale)
+        db.add(new_sale)
 
     change = money_received - total_general
 
@@ -104,13 +111,7 @@ def process_sale(
             "resumen": resumen
         })
 
-    for s in sales_to_save:
-        db.add(s)
-
     db.commit()
-
-    # Obtener el ID de la última venta
-    last_sale_id = sales_to_save[-1].id if sales_to_save else None
 
     # Actualizar resumen después de commit
     ventas_hoy = db.query(models.Sale).filter(func.date(models.Sale.timestamp) == hoy).all()
@@ -121,13 +122,13 @@ def process_sale(
     }
 
     return templates.TemplateResponse("sales.html", {
-        "request": request,
-        "result": {
-            "status": "ok", 
-            "total": total_general,  # Usando total_general que ahora está definida
-            "change": change,
-            "sale_id": last_sale_id  # Asegurando que sale_id está incluido
-        },
+    "request": request,
+    "result": {
+        "status": "ok", 
+        "total": total_general,
+        "change": change,
+        "sale_id": sale_group_id  # Asegúrate de devolver sale_group_id, no last_sale_id
+    },
         "productos": db.query(models.Product).all(),
         "ventas": ventas,
         "resumen": resumen
@@ -260,14 +261,16 @@ def generar_excel_para_fecha(fecha: date, db: Session) -> str:
     wb.save(filepath)
 
     return filepath
-@router.get("/ticket/{sale_id}")
-async def generate_ticket(sale_id: int, db: Session = Depends(get_db)):
-    # Obtener los datos de la venta
-    venta = db.query(models.Sale).filter(models.Sale.id == sale_id).first()
-    if not venta:
+@router.get("/ticket/{sale_group_id}")
+async def generate_ticket(sale_group_id: int, db: Session = Depends(get_db)):
+    # Obtener todos los items de venta con el mismo sale_group_id
+    ventas = db.query(models.Sale).filter(models.Sale.sale_group_id == sale_group_id).order_by(models.Sale.id).all()
+    if not ventas:
         return {"error": "Venta no encontrada"}
     
-    producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+    # La venta principal (usamos la primera para datos generales)
+    main_sale = ventas[0]
+    total_general = sum(v.total for v in ventas)
     
     # Crear un PDF temporal
     temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
@@ -288,15 +291,21 @@ async def generate_ticket(sale_id: int, db: Session = Depends(get_db)):
     elements.append(Spacer(1, 10))
     
     # Detalles de la venta
-    elements.append(Paragraph(f"Fecha: {venta.timestamp.strftime('%d/%m/%Y %H:%M')}", styles["Small"]))
-    elements.append(Paragraph(f"Ticket: {venta.id}", styles["Small"]))
+    elements.append(Paragraph(f"Fecha: {main_sale.timestamp.strftime('%d/%m/%Y %H:%M')}", styles["Small"]))
+    elements.append(Paragraph(f"Ticket: {main_sale.sale_group_id}", styles["Small"]))
     elements.append(Spacer(1, 10))
     
     # Tabla de productos
-    data = [
-        ["Producto", "Cant", "Precio", "Total"],
-        [producto.nombre, venta.quantity, f"${producto.precio:.2f}", f"${venta.total:.2f}"]
-    ]
+    data = [["Producto", "Cant", "Precio", "Total"]]
+    
+    for venta in ventas:
+        producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+        data.append([
+            producto.nombre if producto else "Desconocido",
+            str(venta.quantity),
+            f"${producto.precio:.2f}" if producto else "$0.00",
+            f"${venta.total:.2f}"
+        ])
     
     t = Table(data, colWidths=[1.5*inch, 0.5*inch, 0.5*inch, 0.5*inch])
     t.setStyle(TableStyle([
@@ -311,12 +320,11 @@ async def generate_ticket(sale_id: int, db: Session = Depends(get_db)):
     elements.append(Spacer(1, 10))
     
     # Totales
-    elements.append(Paragraph(f"Subtotal: ${venta.total:.2f}", styles["Small"]))
-    elements.append(Paragraph(f"Total: ${venta.total:.2f}", styles["Small"]))
+    elements.append(Paragraph(f"Total: ${total_general:.2f}", styles["Small"]))
     elements.append(Spacer(1, 10))
     
     # Método de pago
-    elements.append(Paragraph(f"Pago: {venta.payment_method.upper()}", styles["Small"]))
+    elements.append(Paragraph(f"Pago: {main_sale.payment_method.upper()}", styles["Small"]))
     elements.append(Spacer(1, 20))
     
     # Pie de página
@@ -326,18 +334,36 @@ async def generate_ticket(sale_id: int, db: Session = Depends(get_db)):
     doc.build(elements)
     temp_pdf.close()
     
-    return FileResponse(temp_pdf.name, filename=f"ticket_{sale_id}.pdf")
+    return FileResponse(temp_pdf.name, filename=f"ticket_{sale_group_id}.pdf")
 
-@router.get("/thermal-ticket/{sale_id}", response_class=HTMLResponse)
-async def thermal_ticket(sale_id: int, db: Session = Depends(get_db)):
-    # Obtener los datos de la venta
-    venta = db.query(models.Sale).filter(models.Sale.id == sale_id).first()
-    if not venta:
+@router.get("/thermal-ticket/{sale_group_id}", response_class=HTMLResponse)
+async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
+    # Obtener todos los items de venta con el mismo sale_group_id
+    ventas = db.query(models.Sale).filter(models.Sale.sale_group_id == sale_group_id).order_by(models.Sale.id).all()
+    
+    if not ventas:
         return "<h1>Venta no encontrada</h1>"
     
-    producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+    # La venta principal (usamos la primera para obtener datos generales)
+    main_sale = ventas[0]
     
-    # Generar HTML simple para impresión térmica
+    # Calcular total general
+    total_general = sum(v.total for v in ventas)
+    
+    # Generar filas de productos para la tabla
+    productos_html = ""
+    for venta in ventas:
+        producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+        productos_html += f"""
+        <tr>
+            <td>{producto.nombre if producto else 'Desconocido'}</td>
+            <td class="right">{venta.quantity}</td>
+            <td class="right">${producto.precio if producto else 0:.2f}</td>
+            <td class="right">${venta.total:.2f}</td>
+        </tr>
+        """
+    
+    # Generar HTML completo
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -390,8 +416,8 @@ async def thermal_ticket(sale_id: int, db: Session = Depends(get_db)):
         <div class="header">MI TIENDA</div>
         <div class="info">Dirección: Calle Principal 123</div>
         <div class="info">Tel: 555-1234 | RFC: XXXX000000XX</div>
-        <div class="info">Fecha: {venta.timestamp.strftime('%d/%m/%Y %H:%M')}</div>
-        <div class="info">Ticket: {venta.id}</div>
+        <div class="info">Fecha: {main_sale.timestamp.strftime('%d/%m/%Y %H:%M')}</div>
+        <div class="info">Ticket: {main_sale.sale_group_id}</div>
         
         <table>
             <thead>
@@ -403,17 +429,12 @@ async def thermal_ticket(sale_id: int, db: Session = Depends(get_db)):
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>{producto.nombre}</td>
-                    <td class="right">{venta.quantity}</td>
-                    <td class="right">${producto.precio:.2f}</td>
-                    <td class="right">${venta.total:.2f}</td>
-                </tr>
+                {productos_html}
             </tbody>
         </table>
         
-        <div class="total">Total: ${venta.total:.2f}</div>
-        <div class="info">Método de pago: {venta.payment_method.upper()}</div>
+        <div class="total">Total: ${total_general:.2f}</div>
+        <div class="info">Método de pago: {main_sale.payment_method.upper()}</div>
         
         <div class="footer">
             ¡Gracias por su compra!<br>

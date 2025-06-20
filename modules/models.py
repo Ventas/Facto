@@ -30,12 +30,13 @@ class Product(Base):
 
 class Sale(Base):
     __tablename__ = "sales"
-
+    
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    quantity = Column(Integer, nullable=False)
-    total = Column(Float, nullable=False)
-    payment_method = Column(String(50), nullable=False)
+    sale_group_id = Column(Integer)  # Mismo ID para todos los items de una misma venta
+    product_id = Column(Integer, ForeignKey("products.id"))
+    quantity = Column(Integer)
+    total = Column(Float)
+    payment_method = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     # Relación hacia producto

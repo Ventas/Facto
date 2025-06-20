@@ -656,7 +656,7 @@ function calculateTotals() {
         }, 100);
     });
 
-    function printThermalTicket(saleId) {
+  function printThermalTicket(saleId) {
     console.log("Intentando imprimir ticket con ID:", saleId);
     const printWindow = window.open(`/thermal-ticket/${saleId}`, '_blank', 'width=320,height=600');
     
@@ -666,7 +666,6 @@ function calculateTotals() {
     }
 }
 
-// Función para descargar el PDF del ticket
 function downloadTicketPDF(saleId) {
     console.log("Descargando PDF para venta ID:", saleId);
     window.open(`/ticket/${saleId}`, '_blank');
