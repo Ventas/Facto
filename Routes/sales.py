@@ -321,7 +321,7 @@ async def generate_ticket(sale_id: int, db: Session = Depends(get_db)):
     
     # Pie de página
     elements.append(Paragraph("¡Gracias por su compra!", styles["Center"]))
-    elements.append(Paragraph("Sistema de Ventas v1.0", styles["Small"]))
+    elements.append(Paragraph("Sistema de Ventas Wellmade v1.0", styles["Small"]))
     
     doc.build(elements)
     temp_pdf.close()
