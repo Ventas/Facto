@@ -249,17 +249,30 @@
         </form>
     </div>
 
-    {% if result %}
-    <div class="form-container">
-        <h2>Resultado:</h2>
-        {% if result.status == "ok" %}
-            <p><strong>Total:</strong> ${{ result.total }}</p>
-            <p><strong>Cambio:</strong> ${{ result.change }}</p>
-        {% else %}
-            <p class="error-message">{{ result.message }}</p>
+        {% if result %}
+        <div class="form-container">
+            <h2>Resultado:</h2>
+            {% if result.status == "ok" %}
+                <p><strong>Total:</strong> ${{ result.total }}</p>
+                <p><strong>Cambio:</strong> ${{ result.change }}</p>
+                
+                <div style="margin-top: 20px; display: flex; gap: 15px;">
+                    <button type="button" onclick="printThermalTicket({{ result.sale_id }})" 
+                            style="background-color: #17a2b8; color: white; padding: 12px 20px;">
+                        🖨️ Imprimir Ticket
+                    </button>
+                    
+                    <button type="button" onclick="downloadTicketPDF({{ result.sale_id }})" 
+                            style="background-color: #28a745; color: white; padding: 12px 20px;">
+                        📄 Guardar PDF
+                    </button>
+                </div>
+            {% else %}
+                <p class="error-message">{{ result.message }}</p>
+            {% endif %}
+        </div>
         {% endif %}
-    </div>
-    {% endif %}
+
 
     <div class="sales-summary form-container">
         <h2>🧾Resumen del día</h2>
@@ -643,6 +656,21 @@ function calculateTotals() {
         }, 100);
     });
 
+    function printThermalTicket(saleId) {
+    console.log("Intentando imprimir ticket con ID:", saleId);
+    const printWindow = window.open(`/thermal-ticket/${saleId}`, '_blank', 'width=320,height=600');
+    
+    if (!printWindow) {
+        alert("Por favor permite ventanas emergentes para imprimir el ticket");
+        window.location.href = `/thermal-ticket/${saleId}`;
+    }
+}
+
+// Función para descargar el PDF del ticket
+function downloadTicketPDF(saleId) {
+    console.log("Descargando PDF para venta ID:", saleId);
+    window.open(`/ticket/${saleId}`, '_blank');
+}
 </script>
 <div style="text-align: center; margin-top: 40px;">
     <a href="/menu">

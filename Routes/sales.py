@@ -13,7 +13,13 @@ from openpyxl import Workbook
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from datetime import datetime
-
+from fastapi.responses import HTMLResponse
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+import tempfile
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -32,6 +38,7 @@ def sales_page(request: Request, db: Session = Depends(get_db)):
         "numero_ventas": len(ventas_hoy)
     }
 
+    # Devuelve solo los datos iniciales sin result (que es para POST)
     return templates.TemplateResponse("sales.html", {
         "request": request,
         "productos": productos,
@@ -59,6 +66,7 @@ def process_sale(
         "numero_ventas": len(ventas_hoy)
     }
 
+    # Inicializa total_general al principio
     total_general = 0
     sales_to_save = []
 
@@ -75,7 +83,7 @@ def process_sale(
             })
 
         total = selected_product.precio * q
-        total_general += total
+        total_general += total  # Ahora total_general está definida
         selected_product.stock -= q
 
         sales_to_save.append(models.Sale(
@@ -101,7 +109,10 @@ def process_sale(
 
     db.commit()
 
-    ventas = db.query(models.Sale).all()
+    # Obtener el ID de la última venta
+    last_sale_id = sales_to_save[-1].id if sales_to_save else None
+
+    # Actualizar resumen después de commit
     ventas_hoy = db.query(models.Sale).filter(func.date(models.Sale.timestamp) == hoy).all()
     resumen = {
         "total_vendido": sum(v.total for v in ventas_hoy),
@@ -111,7 +122,12 @@ def process_sale(
 
     return templates.TemplateResponse("sales.html", {
         "request": request,
-        "result": {"status": "ok", "total": total_general, "change": change},
+        "result": {
+            "status": "ok", 
+            "total": total_general,  # Usando total_general que ahora está definida
+            "change": change,
+            "sale_id": last_sale_id  # Asegurando que sale_id está incluido
+        },
         "productos": db.query(models.Product).all(),
         "ventas": ventas,
         "resumen": resumen
@@ -244,3 +260,179 @@ def generar_excel_para_fecha(fecha: date, db: Session) -> str:
     wb.save(filepath)
 
     return filepath
+@router.get("/ticket/{sale_id}")
+async def generate_ticket(sale_id: int, db: Session = Depends(get_db)):
+    # Obtener los datos de la venta
+    venta = db.query(models.Sale).filter(models.Sale.id == sale_id).first()
+    if not venta:
+        return {"error": "Venta no encontrada"}
+    
+    producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+    
+    # Crear un PDF temporal
+    temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    doc = SimpleDocTemplate(temp_pdf.name, pagesize=(2.8*inch, 100*inch), 
+                          rightMargin=10, leftMargin=10, topMargin=10, bottomMargin=10)
+    
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="Center", alignment=1))
+    styles.add(ParagraphStyle(name="Small", fontSize=8, leading=10))
+    
+    elements = []
+    
+    # Encabezado del ticket
+    elements.append(Paragraph("MI TIENDA", styles["Center"]))
+    elements.append(Paragraph("Dirección: Calle Principal 123", styles["Small"]))
+    elements.append(Paragraph("Tel: 555-1234", styles["Small"]))
+    elements.append(Paragraph("RFC: XXXX000000XX", styles["Small"]))
+    elements.append(Spacer(1, 10))
+    
+    # Detalles de la venta
+    elements.append(Paragraph(f"Fecha: {venta.timestamp.strftime('%d/%m/%Y %H:%M')}", styles["Small"]))
+    elements.append(Paragraph(f"Ticket: {venta.id}", styles["Small"]))
+    elements.append(Spacer(1, 10))
+    
+    # Tabla de productos
+    data = [
+        ["Producto", "Cant", "Precio", "Total"],
+        [producto.nombre, venta.quantity, f"${producto.precio:.2f}", f"${venta.total:.2f}"]
+    ]
+    
+    t = Table(data, colWidths=[1.5*inch, 0.5*inch, 0.5*inch, 0.5*inch])
+    t.setStyle(TableStyle([
+        ('FONT', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
+        ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black),
+        ('BOX', (0,0), (-1,-1), 0.25, colors.black),
+    ]))
+    
+    elements.append(t)
+    elements.append(Spacer(1, 10))
+    
+    # Totales
+    elements.append(Paragraph(f"Subtotal: ${venta.total:.2f}", styles["Small"]))
+    elements.append(Paragraph(f"Total: ${venta.total:.2f}", styles["Small"]))
+    elements.append(Spacer(1, 10))
+    
+    # Método de pago
+    elements.append(Paragraph(f"Pago: {venta.payment_method.upper()}", styles["Small"]))
+    elements.append(Spacer(1, 20))
+    
+    # Pie de página
+    elements.append(Paragraph("¡Gracias por su compra!", styles["Center"]))
+    elements.append(Paragraph("Sistema de Ventas v1.0", styles["Small"]))
+    
+    doc.build(elements)
+    temp_pdf.close()
+    
+    return FileResponse(temp_pdf.name, filename=f"ticket_{sale_id}.pdf")
+
+@router.get("/thermal-ticket/{sale_id}", response_class=HTMLResponse)
+async def thermal_ticket(sale_id: int, db: Session = Depends(get_db)):
+    # Obtener los datos de la venta
+    venta = db.query(models.Sale).filter(models.Sale.id == sale_id).first()
+    if not venta:
+        return "<h1>Venta no encontrada</h1>"
+    
+    producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+    
+    # Generar HTML simple para impresión térmica
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Ticket de Venta</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                width: 80mm;
+                margin: 0;
+                padding: 5px;
+            }}
+            .header {{
+                text-align: center;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }}
+            .info {{
+                margin-bottom: 5px;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 10px 0;
+            }}
+            th {{
+                text-align: left;
+                border-bottom: 1px dashed #000;
+                padding: 2px 0;
+            }}
+            td {{
+                padding: 2px 0;
+            }}
+            .right {{
+                text-align: right;
+            }}
+            .total {{
+                font-weight: bold;
+                margin-top: 10px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 20px;
+                font-size: 10px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">MI TIENDA</div>
+        <div class="info">Dirección: Calle Principal 123</div>
+        <div class="info">Tel: 555-1234 | RFC: XXXX000000XX</div>
+        <div class="info">Fecha: {venta.timestamp.strftime('%d/%m/%Y %H:%M')}</div>
+        <div class="info">Ticket: {venta.id}</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th class="right">Cant</th>
+                    <th class="right">Precio</th>
+                    <th class="right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{producto.nombre}</td>
+                    <td class="right">{venta.quantity}</td>
+                    <td class="right">${producto.precio:.2f}</td>
+                    <td class="right">${venta.total:.2f}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="total">Total: ${venta.total:.2f}</div>
+        <div class="info">Método de pago: {venta.payment_method.upper()}</div>
+        
+        <div class="footer">
+            ¡Gracias por su compra!<br>
+            Sistema de Ventas Wellmade 
+        </div>
+        
+        <script>
+            // Imprimir automáticamente al cargar
+            window.onload = function() {{
+                setTimeout(function() {{
+                    window.print();
+                    setTimeout(function() {{
+                        window.close();
+                    }}, 100);
+                }}, 100);
+            }};
+        </script>
+    </body>
+    </html>
+    """
+    
+    return html_content
