@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from Database import get_db
 from modules import models
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse,StreamingResponse
 from datetime import date
 from sqlalchemy import func
 from typing import List
@@ -20,6 +20,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 import tempfile
+from io import BytesIO
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -44,6 +45,7 @@ def sales_page(request: Request, db: Session = Depends(get_db)):
         "productos": productos,
         "ventas": ventas,
         "resumen": resumen
+        
     })
 
 
@@ -213,6 +215,76 @@ async def export_sales_by_date(selected_date: str, db: Session = Depends(get_db)
         path=filepath,
         filename=f"ventas_{selected_date}.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+@router.get("/export-sales-pdf")
+def export_sales_pdf(db: Session = Depends(get_db)):
+    hoy = date.today()
+    ventas = db.query(models.Sale).filter(func.date(models.Sale.timestamp) == hoy).all()
+
+    total_vendido = sum(v.total for v in ventas)
+    productos_vendidos = sum(v.quantity for v in ventas)
+    numero_ventas = len(ventas)
+
+    # Crear archivo PDF
+    file_path = "ventas_dia.pdf"
+    doc = SimpleDocTemplate(file_path, pagesize=letter)
+    elements = []
+
+    # Estilos
+    styles = getSampleStyleSheet()
+    elements.append(Paragraph("Reporte de Ventas del Día", styles['Title']))
+    elements.append(Paragraph(f"Fecha: {hoy.strftime('%Y-%m-%d')}", styles['Normal']))
+
+    # Datos de las ventas
+    data = [["ID", "Producto", "Cantidad", "Total", "Método de Pago", "Fecha"]]
+    
+    for venta in ventas:
+        producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+        data.append([
+            str(venta.id),
+            producto.nombre if producto else "Desconocido",
+            str(venta.quantity),
+            f"${venta.total:.2f}",
+            venta.payment_method,
+            venta.timestamp.strftime("%Y-%m-%d %H:%M")
+        ])
+
+    # Crear tabla
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(table)
+
+    # Resumen
+    elements.append(Paragraph("Resumen del Día", styles['Heading2']))
+    summary_data = [
+        ["Total Vendido:", f"${total_vendido:.2f}"],
+        ["Productos Vendidos:", str(productos_vendidos)],
+        ["Número de Ventas:", str(numero_ventas)]
+    ]
+    summary_table = Table(summary_data)
+    summary_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT')
+    ]))
+    elements.append(summary_table)
+
+    # Generar PDF
+    doc.build(elements)
+
+    return FileResponse(
+        path=file_path,
+        filename="ventas_dia.pdf",
+        media_type="application/pdf"
     )
 @router.get("/export-sales-by-date")
 async def export_sales_by_date(selected_date: str):
