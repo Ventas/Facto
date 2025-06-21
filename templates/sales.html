@@ -1,346 +1,229 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Venta de productos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+      color: #333;
+      padding-bottom: 50px;
+    }
 
-    <title>Venta de productos</title>
-    <div style="text-align: right; margin-bottom: 10px;">
-        <a href="/menu">
-            <button type="button" style="background-color: #6c757d;">
-                ⬅️ Volver al menú
-            </button>
-        </a>
-    </div>
-    <style>
+    .container-custom {
+      max-width: 1200px;
+      margin: auto;
+      padding: 20px;
+    }
 
-            /* Agregar este estilo nuevo */
-            .barcode-section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 10px;
-            border: 1px solid #ddd;
-        }
-        .barcode-input {
-            width: 70%;
-            padding: 10px;
-            font-size: 16px;
-        }
-        .barcode-btn {
-            padding: 10px 15px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
-            padding: 30px;
-            color: #333;
-        }
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-            max-width: 1200px;
-            margin: auto;
-        }
-        h1, h2 {
-            color: #212529;
-        }
-        .form-container, .sales-history, .sales-summary {
-            background-color: #ffffff;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        }
-        .form-sections {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ced4da;
-            font-size: 15px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #change_display {
-            font-size: 22px;
-            color: #28a745;
-            font-weight: bold;
-            background-color: #e9fce9;
-            padding: 10px 15px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-        .sales-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 15px;
-        }
-        .sales-table th, .sales-table td {
-            padding: 12px;
-            border: 1px solid #ddd;
-        }
-        .sales-table th {
-            background-color: #007bff;
-            color: white;
-            text-align: left;
-        }
-        .sales-summary {
-            background: linear-gradient(to right, #e3f2fd, #f0faff);
-            border-left: 6px solid #007bff;
-        }
-        .sales-summary ul {
-            list-style: none;
-            padding-left: 0;
-            font-size: 18px;
-            margin: 0;
-        }
-        .sales-summary li {
-            margin-bottom: 8px;
-        }
-        .error-message {
-            color: #dc3545;
-            font-weight: 500;
-        }
-        .export-buttons {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        .export-buttons a button {
-            background-color: #17a2b8;
-        }
-        .export-buttons a button:hover {
-            background-color: #117a8b;
-        }
-        .product-item {
-            margin-bottom: 15px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            background-color: #f8f9fa;
-        }
-    </style>
+    .barcode-section, .form-container, .sales-summary, .sales-history {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      margin-bottom: 30px;
+    }
+
+    .sales-table th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .sales-summary {
+      background: linear-gradient(to right, #e3f2fd, #f0faff);
+      border-left: 6px solid #007bff;
+    }
+
+    .export-buttons button {
+      width: 100%;
+    }
+
+    @media (min-width: 768px) {
+      .export-buttons button {
+        width: auto;
+      }
+    }
+
+    #change_display {
+      font-size: 22px;
+      color: #28a745;
+      font-weight: bold;
+      background-color: #e9fce9;
+      padding: 10px 15px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+  </style>
 </head>
 <body>
+<div class="container-custom">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4">Venta de Productos</h1>
+    <a href="/menu" class="btn btn-secondary">⬅️ Volver al menú</a>
+  </div>
 
-<div class="container">
-
-        <div class="barcode-section">
-            <h3>⚖️ Balanza Digital</h3>
-            <div id="weight-display" style="font-size: 18px; font-weight: bold; background-color: #e9fce9; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-                Peso actual: <span id="current-weight">0.000</span> kg
-            </div>
-            
-            <div id="weight-product-info" style="display: none; background-color: #e7f7fe; padding: 10px; border-radius: 5px; border-left: 4px solid #17a2b8; margin-bottom: 15px;">
-                <i class="bi bi-info-circle"></i> Producto por peso seleccionado: 
-                <strong id="weight-product-name"></strong>. 
-                La cantidad se actualizará automáticamente.
-            </div>
-            
-            <h3>🛒 Productos</h3>
-            <div class="form-group">
-                <label for="search">Buscar producto:</label>
-                <input type="text" id="search" placeholder="Escribe el nombre..." oninput="filterProducts()">
-            </div>
-
-            <button type="button" onclick="addProduct()">➕ Agregar producto</button>
-        </div>
-
-        <div class="barcode-section">
-            <h3>📷 Escanear código de barras</h3>
-            <input type="text" id="barcode-input" class="barcode-input" placeholder="Escanea un código de barras..." autofocus>
-            <button class="barcode-btn" onclick="scanBarcode()">Buscar</button>
-        </div>
-        
-        <form method="post" action="/process-sale" onsubmit="return validateForm()">
-            <!-- Resto del formulario permanece igual -->
-        </form>
+  <!-- Balanza -->
+  <div class="barcode-section">
+    <h3>⚖️ Balanza Digital</h3>
+    <div id="weight-display" class="mb-3 p-2 bg-light border rounded">
+      Peso actual: <span id="current-weight">0.000</span> kg
     </div>
-
-        <form method="post" action="/process-sale" onsubmit="return validateForm()">
-            <div style="display: flex; gap: 40px; align-items: flex-start;">
-                <!-- Sección de productos -->
-                <div style="flex: 2;">
-                    <h3>🛒 Productos</h3>
-                    <div class="form-group">
-                        <label for="search">Buscar producto:</label>
-                        <input type="text" id="search" placeholder="Escribe el nombre..." oninput="filterProducts()">
-                    </div>
-        
-                    <button type="button" onclick="addProduct()">➕ Agregar producto</button>
-        
-                    <table class="sales-table" id="product-summary" style="margin-top: 20px;">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Cantidad</th>
-                                <th>Stock</th>
-                                <th>Precio Unitario</th>
-                                <th>Subtotal</th>
-                                <th>Eliminar</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summary-body">
-                            <!-- Filas dinámicas -->
-                        </tbody>
-                    </table>
-                </div>
-        
-                <!-- Sección de pagos -->
-                <div style="flex: 1;">
-                    <h3>💳 Pago</h3>
-                    <div class="form-group">
-                        <label for="payment_method">Método de pago:</label>
-                        <select name="payment_method" id="payment_method" required>
-                            <option value="">Seleccione...</option>
-                            <option value="efectivo">Efectivo</option>
-                            <option value="tarjeta">Tarjeta</option>
-                            <option value="transferencia">Transferencia</option>
-                        </select>
-                    </div>
-        
-                    <div class="form-group">
-                        <label for="money_received">Dinero recibido:</label>
-                        <input type="number" step="0.01" id="money_received" name="money_received" required>
-                    </div>
-        
-                    <div class="form-group">
-                        <label>Total a pagar:</label>
-                        <span id="total_display">$0.00</span>
-                    </div>
-        
-                    <div class="form-group">
-                        <label>Dinero a devolver:</label>
-                        <span id="change_display">$0.00</span>
-                    </div>
-        
-                    <button type="submit">💾 Registrar venta</button>
-                </div>
-            </div>
-        </form>
+    <div id="weight-product-info" class="alert alert-info d-none">
+      <i class="bi bi-info-circle"></i> Producto por peso seleccionado: <strong id="weight-product-name"></strong>. La cantidad se actualizará automáticamente.
     </div>
+    <div class="mb-3">
+      <label for="search" class="form-label">Buscar producto:</label>
+      <input type="text" id="search" class="form-control" placeholder="Escribe el nombre..." oninput="filterProducts()">
+    </div>
+    <button type="button" class="btn btn-success" onclick="addProduct()">➕ Agregar producto</button>
+  </div>
 
-        {% if result %}
+  <!-- Escáner -->
+  <div class="barcode-section">
+    <h3>📷 Escanear código de barras</h3>
+    <div class="input-group">
+      <input type="text" id="barcode-input" class="form-control" placeholder="Escanea un código de barras...">
+      <button class="btn btn-success" onclick="scanBarcode()">Buscar</button>
+    </div>
+  </div>
+
+  <!-- Formulario de venta -->
+  <form method="post" action="/process-sale" onsubmit="return validateForm()">
+    <div class="row g-4">
+      <div class="col-md-8">
         <div class="form-container">
-            <h2>Resultado:</h2>
-            {% if result.status == "ok" %}
-                <p><strong>Total:</strong> ${{ result.total }}</p>
-                <p><strong>Cambio:</strong> ${{ result.change }}</p>
-                
-                <div style="margin-top: 20px; display: flex; gap: 15px;">
-                    <button type="button" onclick="printThermalTicket({{ result.sale_id }})" 
-                            style="background-color: #17a2b8; color: white; padding: 12px 20px;">
-                        🖨️ Imprimir Ticket
-                    </button>
-                    
-                    <button type="button" onclick="downloadTicketPDF({{ result.sale_id }})" 
-                            style="background-color: #28a745; color: white; padding: 12px 20px;">
-                        📄 Guardar PDF
-                    </button>
-                </div>
-            {% else %}
-                <p class="error-message">{{ result.message }}</p>
-            {% endif %}
-        </div>
-        {% endif %}
-
-
-    <div class="sales-summary form-container">
-        <h2>🧾Resumen del día</h2>
-        <ul>
-            <li><strong>Total vendido:</strong> ${{ resumen.total_vendido }}</li>
-            <li><strong>Productos vendidos:</strong> {{ resumen.productos_vendidos }}</li>
-            <li><strong>Número de ventas:</strong> {{ resumen.numero_ventas }}</li>
-        </ul>
-    </div>
-    <div class="export-buttons">
-        <a href="/export-sales-excel">
-            <button type="button" style="background-color: #28a745; color: white; padding: 10px 20px; font-size: 16px; border: none; border-radius: 8px;">
-                <i class="bi bi-file-earmark-excel" style="margin-right: 8px;"></i> Exportar Excel (Hoy)
-            </button>
-        </a>
-        <a href="/export-sales-pdf">
-            <button type="button" style="background-color: #dc3545; color: white; padding: 10px 20px; font-size: 16px; border: none; border-radius: 8px;">
-                <i class="bi bi-file-earmark-pdf" style="margin-right: 8px;"></i> Exportar PDF (Hoy)
-            </button>
-        </a>
-    </div>
-
-    <div style="margin-top: 20px;">
-        <form action="/export-sales-by-date" method="get" style="display: flex; align-items: center; gap: 10px;">
-            <label for="selected_date" style="font-weight: bold;">Exportar ventas por fecha:</label>
-            <input type="date" id="selected_date" name="selected_date" required 
-                   style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-            
-            <button type="submit" style="background-color: #007bff; color: white; padding: 10px 15px; font-size: 16px; border: none; border-radius: 8px;">
-                <i class="bi bi-download" style="margin-right: 6px;"></i> Exportar por fecha
-            </button>
-        </form>
-    </div
-
-    <div class="sales-history">
-        <h2>🧾Historial de ventas</h2>
-        <table class="sales-table">
+          <h3>🛒 Productos</h3>
+          <table class="table table-striped table-bordered sales-table">
             <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Total</th>
-                    <th>Método de Pago</th>
-                    <th>Fecha</th>
-                    <th>Acción</th> <!-- Nueva columna -->
-                </tr>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Stock</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+                <th>Eliminar</th>
+              </tr>
             </thead>
-            <tbody>
-                {% for v in ventas %}
-                <tr>
-                    <td>{{ v.product.nombre }}</td>
-                    <td>{{ v.quantity }}</td>
-                    <td>${{ v.total }}</td>
-                    <td>{{ v.payment_method }}</td>
-                    <td>{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td>
-                        <form method="post" action="/delete-sale" onsubmit="return confirm('¿Seguro que deseas eliminar esta venta?');">
-                            <input type="hidden" name="sale_id" value="{{ v.id }}">
-                            <button type="submit" style="background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 5px;">
-                                ❌ Eliminar
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
+            <tbody id="summary-body">
+              <!-- dinámico -->
             </tbody>
-        </table>
+          </table>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-container">
+          <h3>💳 Pago</h3>
+          <div class="mb-3">
+            <label for="payment_method" class="form-label">Método de pago:</label>
+            <select name="payment_method" id="payment_method" class="form-select" required>
+              <option value="">Seleccione...</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="tarjeta">Tarjeta</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="money_received" class="form-label">Dinero recibido:</label>
+            <input type="number" step="0.01" id="money_received" name="money_received" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label>Total a pagar:</label>
+            <div id="total_display">$0.00</div>
+          </div>
+          <div class="mb-3">
+            <label>Dinero a devolver:</label>
+            <div id="change_display">$0.00</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">💾 Registrar venta</button>
+        </div>
+      </div>
     </div>
+  </form>
+
+  <!-- Resultados -->
+  {% if result %}
+  <div class="form-container">
+    <h2>Resultado:</h2>
+    {% if result.status == "ok" %}
+    <p><strong>Total:</strong> ${{ result.total }}</p>
+    <p><strong>Cambio:</strong> ${{ result.change }}</p>
+    <div class="d-flex flex-wrap gap-3 mt-3">
+      <button type="button" class="btn btn-info" onclick="printThermalTicket({{ result.sale_id }})">🖨️ Imprimir Ticket</button>
+      <button type="button" class="btn btn-success" onclick="downloadTicketPDF({{ result.sale_id }})">📄 Guardar PDF</button>
+    </div>
+    {% else %}
+    <p class="text-danger fw-semibold">{{ result.message }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Resumen del día -->
+  <div class="sales-summary">
+    <h2>🧾Resumen del día</h2>
+    <ul class="list-unstyled">
+      <li><strong>Total vendido:</strong> ${{ resumen.total_vendido }}</li>
+      <li><strong>Productos vendidos:</strong> {{ resumen.productos_vendidos }}</li>
+      <li><strong>Número de ventas:</strong> {{ resumen.numero_ventas }}</li>
+    </ul>
+  </div>
+
+  <!-- Exportación -->
+  <div class="row export-buttons mb-4">
+    <div class="col-6 col-md-3">
+      <a href="/export-sales-excel" class="btn btn-success"><i class="bi bi-file-earmark-excel me-2"></i>Exportar Excel</a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a href="/export-sales-pdf" class="btn btn-danger"><i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF</a>
+    </div>
+    <div class="col-md-6 mt-3 mt-md-0">
+      <form action="/export-sales-by-date" method="get" class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+        <label for="selected_date" class="form-label fw-bold">Por fecha:</label>
+        <input type="date" id="selected_date" name="selected_date" class="form-control" required>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-download me-2"></i>Exportar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Historial -->
+  <div class="sales-history">
+    <h2>🧾Historial de ventas</h2>
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Total</th>
+            <th>Método de Pago</th>
+            <th>Fecha</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in ventas %}
+          <tr>
+            <td>{{ v.product.nombre }}</td>
+            <td>{{ v.quantity }}</td>
+            <td>${{ v.total }}</td>
+            <td>{{ v.payment_method }}</td>
+            <td>{{ v.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              <form method="post" action="/delete-sale" onsubmit="return confirm('¿Seguro que deseas eliminar esta venta?');">
+                <input type="hidden" name="sale_id" value="{{ v.id }}">
+                <button type="submit" class="btn btn-sm btn-danger">❌ Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 <script>
 
     let currentWeight = 0;
