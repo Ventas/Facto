@@ -53,13 +53,12 @@ def sales_page(request: Request, db: Session = Depends(get_db)):
 def process_sale(
     request: Request,
     product: List[str] = Form(...),
-    quantity: List[int] = Form(...),
+    quantity: List[float] = Form(...),  # Cambiado a float para manejar decimales
     payment_method: str = Form(...),
     money_received: float = Form(...),
     db: Session = Depends(get_db)
 ):
     hoy = date.today()
-    ventas = db.query(models.Sale).all()
     ventas_hoy = db.query(models.Sale).filter(func.date(models.Sale.timestamp) == hoy).all()
 
     resumen = {
@@ -68,36 +67,57 @@ def process_sale(
         "numero_ventas": len(ventas_hoy)
     }
 
-    # Inicializa total_general al principio
     total_general = 0
+    subtotal = 0
+    iva_total = 0
     sales_to_save = []
     
-    # Generar un ID de grupo único para esta venta (manejo seguro cuando la tabla está vacía)
     max_group_id = db.query(func.max(models.Sale.sale_group_id)).scalar()
     sale_group_id = 1 if max_group_id is None else max_group_id + 1
 
     for p, q in zip(product, quantity):
         selected_product = db.query(models.Product).filter(models.Product.nombre == p).first()
 
-        if not selected_product or selected_product.stock < q:
+        if not selected_product:
             return templates.TemplateResponse("sales.html", {
                 "request": request,
-                "result": {"status": "error", "message": f"Producto '{p}' no disponible o sin stock suficiente"},
+                "result": {"status": "error", "message": f"Producto '{p}' no encontrado"},
                 "productos": db.query(models.Product).all(),
-                "ventas": ventas,
+                "ventas": db.query(models.Sale).all(),
                 "resumen": resumen
             })
 
-        total = selected_product.precio * q
-        total_general += total
+        if selected_product.stock < q:
+            return templates.TemplateResponse("sales.html", {
+                "request": request,
+                "result": {"status": "error", "message": f"Stock insuficiente para '{p}' (disponible: {selected_product.stock})"},
+                "productos": db.query(models.Product).all(),
+                "ventas": db.query(models.Sale).all(),
+                "resumen": resumen
+            })
+
+        # Calcular subtotal e IVA usando el porcentaje de IVA del producto
+        precio_sin_iva = selected_product.precio
+        subtotal_producto = precio_sin_iva * q
+        iva_producto = subtotal_producto * (selected_product.iva / 100)
+        total_producto = subtotal_producto + iva_producto
+
+        subtotal += subtotal_producto
+        iva_total += iva_producto
+        total_general += total_producto
+
+        # Actualizar stock
         selected_product.stock -= q
 
         new_sale = models.Sale(
             sale_group_id=sale_group_id,
             product_id=selected_product.id,
             quantity=q,
-            total=total,
-            payment_method=payment_method
+            subtotal=subtotal_producto,
+            iva=iva_producto,
+            total=total_producto,
+            payment_method=payment_method,
+            product_iva_percentage=selected_product.iva  # Guardar el % de IVA aplicado
         )
         sales_to_save.append(new_sale)
         db.add(new_sale)
@@ -109,13 +129,13 @@ def process_sale(
             "request": request,
             "result": {"status": "error", "message": "El dinero recibido no es suficiente"},
             "productos": db.query(models.Product).all(),
-            "ventas": ventas,
+            "ventas": db.query(models.Sale).all(),
             "resumen": resumen
         })
 
     db.commit()
 
-    # Actualizar resumen después de commit
+    # Actualizar resumen después del commit
     ventas_hoy = db.query(models.Sale).filter(func.date(models.Sale.timestamp) == hoy).all()
     resumen = {
         "total_vendido": sum(v.total for v in ventas_hoy),
@@ -124,15 +144,17 @@ def process_sale(
     }
 
     return templates.TemplateResponse("sales.html", {
-    "request": request,
-    "result": {
-        "status": "ok", 
-        "total": total_general,
-        "change": change,
-        "sale_id": sale_group_id  # Asegúrate de devolver sale_group_id, no last_sale_id
-    },
+        "request": request,
+        "result": {
+            "status": "ok", 
+            "subtotal": subtotal,
+            "iva": iva_total,
+            "total": total_general,
+            "change": change,
+            "sale_id": sale_group_id
+        },
         "productos": db.query(models.Product).all(),
-        "ventas": ventas,
+        "ventas": db.query(models.Sale).all(),
         "resumen": resumen
     })
 
@@ -416,10 +438,12 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
     if not ventas:
         return "<h1>Venta no encontrada</h1>"
     
-    # La venta principal (usamos la primera para obtener datos generales)
+    # La venta principal (usamos la primera para datos generales)
     main_sale = ventas[0]
     
-    # Calcular total general
+    # Calcular totales
+    subtotal = sum(v.subtotal for v in ventas)
+    iva_total = sum(v.iva for v in ventas)
     total_general = sum(v.total for v in ventas)
     
     # Generar filas de productos para la tabla
@@ -431,6 +455,7 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
             <td>{producto.nombre if producto else 'Desconocido'}</td>
             <td class="right">{venta.quantity}</td>
             <td class="right">${producto.precio if producto else 0:.2f}</td>
+            <td class="right">{venta.product_iva_percentage}%</td>
             <td class="right">${venta.total:.2f}</td>
         </tr>
         """
@@ -482,6 +507,11 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
                 margin-top: 20px;
                 font-size: 10px;
             }}
+            .summary {{
+                margin-top: 10px;
+                border-top: 1px dashed #000;
+                padding-top: 5px;
+            }}
         </style>
     </head>
     <body>
@@ -496,7 +526,8 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
                 <tr>
                     <th>Producto</th>
                     <th class="right">Cant</th>
-                    <th class="right">Precio</th>
+                    <th class="right">P.Unit</th>
+                    <th class="right">IVA%</th>
                     <th class="right">Total</th>
                 </tr>
             </thead>
@@ -505,7 +536,12 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
             </tbody>
         </table>
         
-        <div class="total">Total: ${total_general:.2f}</div>
+        <div class="summary">
+            <div>Subtotal: ${subtotal:.2f}</div>
+            <div>IVA: ${iva_total:.2f}</div>
+            <div class="total">Total: ${total_general:.2f}</div>
+        </div>
+        
         <div class="info">Método de pago: {main_sale.payment_method.upper()}</div>
         
         <div class="footer">

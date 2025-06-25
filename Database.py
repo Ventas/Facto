@@ -49,12 +49,13 @@ Base = declarative_base()
 #     print("✅ Tabla 'proveedores' creada correctamente.")
 
 # with engine.connect() as conn:
-#     # Crear tabla proveedores
-#     # conn.execute(text(create_table_sql))
-#     # print("✅ Tabla 'proveedores' creada correctamente.")
-    
 #     # Añadir columna iva a la tabla products
 #     alter_table_sql = "ALTER TABLE products ADD COLUMN precio_proveedor FLOAT NOT NULL DEFAULT 0.0;"
+#     conn.execute(text(alter_table_sql))
+#     print("✅ Columna 'precio_proveedor' añadida a la tabla 'products' correctamente.")
+
+# with engine.connect() as conn:
+#     alter_table_sql = "ALTER TABLE sales ADD COLUMN subtotal FLOAT NOT NULL DEFAULT 0.0;"
 #     conn.execute(text(alter_table_sql))
 #     print("✅ Columna 'precio_proveedor' añadida a la tabla 'products' correctamente.")
 

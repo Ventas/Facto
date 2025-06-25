@@ -104,6 +104,7 @@
                 <th>Cantidad</th>
                 <th>Stock</th>
                 <th>Precio Unitario</th>
+                <th>IVA %</th>
                 <th>Subtotal</th>
                 <th>Eliminar</th>
               </tr>
@@ -126,6 +127,18 @@
               <option value="transferencia">Transferencia</option>
             </select>
           </div>
+          <div class="mb-3">
+            <label>Subtotal:</label>
+            <div id="subtotal_display">$0.00</div>
+        </div>
+        <div class="mb-3">
+            <label>IVA:</label>
+            <div id="iva_display">$0.00</div>
+        </div>
+        <div class="mb-3">
+            <label>Total a pagar:</label>
+            <div id="total_display">$0.00</div>
+        </div>  
           <div class="mb-3">
             <label for="money_received" class="form-label">Dinero recibido:</label>
             <input type="number" step="0.01" id="money_received" name="money_received" class="form-control" required>
@@ -302,12 +315,16 @@ function addProduct(product = null) {
 
     const tbody = document.getElementById('summary-body');
     
-    // Verificar si el producto ya existe en la tabla
     const existingRow = Array.from(tbody.rows).find(row => {
         return row.querySelector('input[name="product"]').value === product.nombre;
     });
 
     if (existingRow) {
+        const qtyInput = existingRow.querySelector('input[name="quantity"]');
+        const currentQty = parseFloat(qtyInput.value);
+        const newQty = currentQty + (isWeightProduct ? currentWeight : 1);
+        qtyInput.value = newQty;
+        qtyInput.dispatchEvent(new Event('change'));
         return;
     }
 
@@ -318,7 +335,7 @@ function addProduct(product = null) {
     const row = document.createElement('tr');
     row.innerHTML = `
         <td>
-            <input type="hidden" name="product" value="${product.nombre}">
+            <input type="hidden" name="product" value="${product.nombre}" data-iva="${product.iva}">
             ${product.nombre}
         </td>
         <td>
@@ -330,20 +347,21 @@ function addProduct(product = null) {
         </td>
         <td>${product.stock} ${product.unidad_stock}</td>
         <td>$${product.precio.toFixed(2)}</td>
+        <td>${product.iva || 0}%</td>
         <td class="subtotal">$${(product.precio * (isWeightProduct ? currentWeight : 1)).toFixed(2)}</td>
-        <td><button type="button" onclick="removeRow(this)">❌</button></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">❌</button></td>
     `;
 
     tbody.appendChild(row);
     calculateTotals();
     
-    // Si es producto por peso, marcarlo como seleccionado
     if (isWeightProduct) {
         selectedProduct = product;
         document.getElementById('weight-product-info').style.display = 'block';
         document.getElementById('weight-product-name').textContent = product.nombre;
     }
 }
+
 
 // Iniciar la lectura de la balanza al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
@@ -368,7 +386,10 @@ function filterProducts() {
         {
             nombre: "{{ p.nombre }}",
             precio: {{ p.precio }},
-            stock: {{ p.stock }}
+            stock: {{ p.stock }},
+            iva: {{ p.iva }},  // ¡Asegúrate de incluir este campo!
+            unidad_stock: "{{ p.unidad_stock }}",
+            codigo_barras: "{{ p.codigo_barras if p.codigo_barras else '' }}"
         },
         {% endfor %}
     ];
@@ -382,50 +403,6 @@ function filterProducts() {
         }
     }
 
-    function addProduct(product = null) {
-    if (!product) {
-        const search = document.getElementById('search').value.toLowerCase();
-        product = productos.find(p => p.nombre.toLowerCase().includes(search));
-        if (!product) {
-            alert("Producto no encontrado");
-            return;
-        }
-    }
-
-    const tbody = document.getElementById('summary-body');
-    
-    // Verificar si el producto ya existe en la tabla
-    const existingRow = Array.from(tbody.rows).find(row => {
-        return row.querySelector('input[name="product"]').value === product.nombre;
-    });
-
-    if (existingRow) {
-      //  alert("Este producto ya está en la venta.");
-        return;
-    }
-
-    const row = document.createElement('tr');
-row.innerHTML = `
-    <td>
-        <input type="hidden" name="product" value="${product.nombre}">
-        ${product.nombre}
-    </td>
-    <td>
-        <input type="number" name="quantity" value="1" min="1" max="${product.stock}" onchange="calculateTotals()">
-    </td>
-    <td>${product.stock}</td>
-    <td>$${product.precio.toFixed(2)}</td>
-    <td class="subtotal">$${product.precio.toFixed(2)}</td>
-    <td><button type="button" onclick="removeRow(this)">❌</button></td>
-`;
-
-// Agregar la fila a la tabla de productos seleccionados
-tbody.appendChild(row);
-
-// Llamar a la función para actualizar los totales
-calculateTotals();
-}
-
 
 function removeRow(button) {
     const row = button.closest('tr');
@@ -434,29 +411,41 @@ function removeRow(button) {
 }
 
 function calculateTotals() {
-        let total = 0;
+    let subtotal = 0;
+    let ivaTotal = 0;
 
-        const rows = document.querySelectorAll('#summary-body tr');
-        rows.forEach(row => {
-            const price = parseFloat(row.children[3].textContent.replace('$', ''));
-            const qtyInput = row.querySelector('input[name="quantity"]');
-            const quantity = parseInt(qtyInput.value);
-            const maxStock = parseInt(qtyInput.getAttribute("max"));
+    const rows = document.querySelectorAll('#summary-body tr');
+    rows.forEach(row => {
+        const price = parseFloat(row.children[3].textContent.replace('$', ''));
+        const qtyInput = row.querySelector('input[name="quantity"]');
+        const quantity = parseFloat(qtyInput.value);
+        const maxStock = parseFloat(qtyInput.getAttribute("max"));
+        
+        // Obtener el IVA del producto (con valor por defecto 0 si no existe)
+        const ivaInput = row.querySelector('input[name="product"]');
+        const ivaPercentage = parseFloat(ivaInput.getAttribute('data-iva')) || 0;
 
-            if (quantity > maxStock) {
-                alert(`La cantidad ingresada para "${row.children[0].textContent.trim()}" supera el stock disponible (${maxStock}).`);
-                qtyInput.value = maxStock;
-                return;
-            }
+        if (!isNaN(maxStock) && quantity > maxStock) {
+            alert(`La cantidad ingresada para "${row.children[0].textContent.trim()}" supera el stock disponible (${maxStock}).`);
+            qtyInput.value = maxStock;
+            return;
+        }
 
-            const subtotal = price * quantity;
-            const subtotalCell = row.querySelector('.subtotal');
-            subtotalCell.textContent = `$${subtotal.toFixed(2)}`;
+        const productSubtotal = price * quantity;
+        const productIva = productSubtotal * (ivaPercentage / 100);
+        const productTotal = productSubtotal + productIva;
 
-            total += subtotal;
-        });
+        const subtotalCell = row.querySelector('.subtotal');
+        subtotalCell.textContent = `$${productTotal.toFixed(2)}`;
 
+        subtotal += productSubtotal;
+        ivaTotal += productIva;
+    });
+
+    const total = subtotal + ivaTotal;
         // Corregido el ID (de total_display a total_display)
+        document.getElementById('subtotal_display').textContent = `$${subtotal.toFixed(2)}`;
+        document.getElementById('iva_display').textContent = `$${ivaTotal.toFixed(2)}`;
         document.getElementById('total_display').textContent = `$${total.toFixed(2)}`;
 
         const moneyReceived = parseFloat(document.getElementById('money_received').value) || 0;
@@ -465,15 +454,15 @@ function calculateTotals() {
         // Mostrar el cambio (rojo si es negativo)
         const changeDisplay = document.getElementById('change_display');
         changeDisplay.textContent = `$${Math.abs(change).toFixed(2)}`;
-        
-        if (change < 0) {
-            changeDisplay.style.color = '#dc3545';
-            changeDisplay.style.backgroundColor = '#ffe6e6';
-        } else {
-            changeDisplay.style.color = '#28a745';
-            changeDisplay.style.backgroundColor = '#e9fce9';
-        }
+    
+    if (change < 0) {
+        changeDisplay.style.color = '#dc3545';
+        changeDisplay.style.backgroundColor = '#ffe6e6';
+    } else {
+        changeDisplay.style.color = '#28a745';
+        changeDisplay.style.backgroundColor = '#e9fce9';
     }
+}
 
     // Agregar event listener para el campo money_received
     document.getElementById('money_received').addEventListener('input', calculateTotals);

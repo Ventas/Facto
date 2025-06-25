@@ -37,8 +37,11 @@ class Sale(Base):
     sale_group_id = Column(Integer)  # Mismo ID para todos los items de una misma venta
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity = Column(Integer)
+    subtotal = Column(Float)
     total = Column(Float)
+    iva = Column(Float)
     payment_method = Column(String)
+    product_iva_percentage = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     # Relación hacia producto
