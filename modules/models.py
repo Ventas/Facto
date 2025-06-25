@@ -25,6 +25,8 @@ class Product(Base):
     unidad_stock = Column(String(100), nullable=False)
     precio = Column(Float, nullable=False)
     codigo_barras = Column(String, unique=True, nullable=True)
+    iva = Column(Float, nullable=False, default=0.0)  # Porcentaje (ej: 19.0)
+    precio_proveedor = Column(Float, nullable=False, default=0.0)
 
     sales = relationship("Sale", back_populates="product")
 
