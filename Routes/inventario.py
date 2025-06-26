@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from Database import get_db
 from modules import models
+from datetime import datetime
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -24,8 +25,10 @@ def agregar_producto(
     codigo_barras: str = Form(None),
     iva: float = Form(...),
     precio_proveedor: float = Form(...),
+    fecha_vencimiento: str = Form(None),
     db: Session = Depends(get_db)
 ):
+    fecha = datetime.strptime(fecha_vencimiento, "%Y-%m-%d").date() if fecha_vencimiento else None
     nuevo_producto = models.Product(
         nombre=nombre,
         descripcion=descripcion,
@@ -34,7 +37,8 @@ def agregar_producto(
         unidad_stock=unidad_stock,
         codigo_barras=codigo_barras if codigo_barras else None,
         iva=iva,
-        precio_proveedor=precio_proveedor
+        precio_proveedor=precio_proveedor,
+        fecha_vencimiento=fecha
     )
     db.add(nuevo_producto)
     db.commit()
@@ -65,6 +69,7 @@ def editar_producto(
     codigo_barras: str = Form(None),
     iva: float = Form(...),
     precio_proveedor: float = Form(...),
+    fecha_vencimiento: str = Form(None),
     db: Session = Depends(get_db)
 ):
     producto = db.query(models.Product).filter(models.Product.id == producto_id).first()
@@ -77,5 +82,6 @@ def editar_producto(
         producto.iva = iva
         producto.precio_proveedor = precio_proveedor,
         producto.codigo_barras = codigo_barras if codigo_barras else None
+        producto.fecha_vencimiento = datetime.strptime(fecha_vencimiento, "%Y-%m-%d").date() if fecha_vencimiento else None  # AÑADIDO
         db.commit()
     return RedirectResponse(url="/inventario", status_code=303)

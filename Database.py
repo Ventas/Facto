@@ -55,9 +55,14 @@ Base = declarative_base()
 #     print("✅ Columna 'precio_proveedor' añadida a la tabla 'products' correctamente.")
 
 # with engine.connect() as conn:
-#     alter_table_sql = "ALTER TABLE sales ADD COLUMN subtotal FLOAT NOT NULL DEFAULT 0.0;"
+#     alter_table_sql = "ALTER TABLE products ADD COLUMN fecha_vencimiento FLOAT NOT NULL DEFAULT 0.0;"
 #     conn.execute(text(alter_table_sql))
 #     print("✅ Columna 'precio_proveedor' añadida a la tabla 'products' correctamente.")
+
+# with engine.connect() as conn:
+#     alter_table_sql = "ALTER TABLE products ADD COLUMN fecha_vencimiento DATE DEFAULT NULL;"
+#     conn.execute(text(alter_table_sql))
+#     print("✅ Columna 'fecha_vencimiento' añadida a la tabla 'products' correctamente.")
 
 
 def get_db():

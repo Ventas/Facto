@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey,DateTime
 from sqlalchemy.orm import relationship
 from Database import Base
 from datetime import datetime
+from sqlalchemy import Date
 
 # class User(Base):
 #     __tablename__ = "users"
@@ -27,6 +28,7 @@ class Product(Base):
     codigo_barras = Column(String, unique=True, nullable=True)
     iva = Column(Float, nullable=False, default=0.0)  # Porcentaje (ej: 19.0)
     precio_proveedor = Column(Float, nullable=False, default=0.0)
+    fecha_vencimiento = Column(Date, nullable=True) 
 
     sales = relationship("Sale", back_populates="product")
 
