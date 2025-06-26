@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from Database import get_db
 from modules import models
 from datetime import datetime
+from datetime import date
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -12,7 +13,11 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/inventario", response_class=HTMLResponse)
 def ver_inventario(request: Request, db: Session = Depends(get_db)):
     productos = db.query(models.Product).all()
-    return templates.TemplateResponse("inventario.html", {"request": request, "productos": productos})
+    return templates.TemplateResponse("inventario.html", {
+        "request": request,
+        "productos": productos,
+        "fecha_actual": date.today()  # Añade esta línea
+    })
 
 @router.post("/inventario", response_class=HTMLResponse)
 def agregar_producto(
