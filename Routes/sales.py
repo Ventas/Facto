@@ -18,7 +18,7 @@ from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
-from reportlab.lib.units import inch
+from reportlab.lib.units import mm, inch
 import tempfile
 from io import BytesIO
 
@@ -362,68 +362,97 @@ async def generate_ticket(sale_group_id: int, db: Session = Depends(get_db)):
     if not ventas:
         return {"error": "Venta no encontrada"}
     
-    # La venta principal (usamos la primera para datos generales)
     main_sale = ventas[0]
     total_general = sum(v.total for v in ventas)
     
-    # Crear un PDF temporal
+    # Crear un PDF con tamaño estándar para tickets (80mm de ancho)
     temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    doc = SimpleDocTemplate(temp_pdf.name, pagesize=(2.8*inch, 100*inch), 
-                          rightMargin=10, leftMargin=10, topMargin=10, bottomMargin=10)
+    doc = SimpleDocTemplate(temp_pdf.name, pagesize=(80*mm, 297*mm),
+                          rightMargin=5*mm, leftMargin=5*mm, topMargin=5*mm, bottomMargin=5*mm)
     
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="Center", alignment=1))
-    styles.add(ParagraphStyle(name="Small", fontSize=8, leading=10))
+    styles["Title"].fontSize = 12
+    styles["Title"].leading = 14
+    styles["Title"].alignment = 1
+    
+    # Definir estilos personalizados
+    custom_styles = {
+        "TicketSmall": ParagraphStyle(name="TicketSmall", fontSize=9, leading=11),
+        "TicketFooter": ParagraphStyle(name="TicketFooter", fontSize=8, leading=10, alignment=1),
+        "TicketTotal": ParagraphStyle(name="TicketTotal", fontSize=10, leading=12, alignment=2),
+        "TicketPayment": ParagraphStyle(name="TicketPayment", fontSize=10, leading=12),
+        "TicketThanks": ParagraphStyle(name="TicketThanks", fontSize=10, leading=12, alignment=1),
+        "TicketProduct": ParagraphStyle(name="TicketProduct", fontSize=8, leading=10, wordWrap='CJK')
+    }
+    
+    for style_name, style in custom_styles.items():
+        styles.add(style)
     
     elements = []
     
-    # Encabezado del ticket
-    elements.append(Paragraph("MI TIENDA", styles["Center"]))
-    elements.append(Paragraph("Dirección: Calle Principal 123", styles["Small"]))
-    elements.append(Paragraph("Tel: 555-1234", styles["Small"]))
-    elements.append(Paragraph("RFC: XXXX000000XX", styles["Small"]))
-    elements.append(Spacer(1, 10))
+    # Encabezado
+    elements.append(Paragraph("MI TIENDA", styles["Title"]))
+    elements.append(Spacer(1, 5*mm))
+    
+    # Información de la tienda
+    elements.append(Paragraph("Dirección: Calle Principal 123", styles["TicketSmall"]))
+    elements.append(Paragraph("Tel: 555-1234", styles["TicketSmall"]))
+    elements.append(Paragraph("RFC: XXXX000000XX", styles["TicketSmall"]))
+    elements.append(Spacer(1, 5*mm))
     
     # Detalles de la venta
-    elements.append(Paragraph(f"Fecha: {main_sale.timestamp.strftime('%d/%m/%Y %H:%M')}", styles["Small"]))
-    elements.append(Paragraph(f"Ticket: {main_sale.sale_group_id}", styles["Small"]))
-    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(f"Fecha: {main_sale.timestamp.strftime('%d/%m/%Y %H:%M')}", styles["TicketSmall"]))
+    elements.append(Paragraph(f"Ticket: {main_sale.sale_group_id}", styles["TicketSmall"]))
+    elements.append(Spacer(1, 5*mm))
     
     # Tabla de productos
     data = [["Producto", "Cant", "Precio", "Total"]]
     
     for venta in ventas:
         producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+        nombre_producto = producto.nombre if producto else "Desconocido"
+        precio_producto = producto.precio if producto else 0.00  # Usamos el precio del producto
+        
+        if len(nombre_producto) > 25:
+            nombre_producto = nombre_producto[:22] + "..."
+        
         data.append([
-            producto.nombre if producto else "Desconocido",
+            Paragraph(nombre_producto, styles["TicketProduct"]),
             str(venta.quantity),
-            f"${producto.precio:.2f}" if producto else "$0.00",
-            f"${venta.total:.2f}"
+            f"${precio_producto:.2f}",  # Mostramos el precio unitario del producto
+            f"${venta.total:.2f}"  # Mostramos el total de la línea
         ])
     
-    t = Table(data, colWidths=[1.5*inch, 0.5*inch, 0.5*inch, 0.5*inch])
+    # Anchos de columna en mm
+    col_widths = [40*mm, 10*mm, 15*mm, 15*mm]
+    
+    t = Table(data, colWidths=col_widths)
     t.setStyle(TableStyle([
         ('FONT', (0,0), (-1,0), 'Helvetica-Bold'),
         ('FONTSIZE', (0,0), (-1,-1), 8),
         ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ('INNERGRID', (0,0), (-1,-1), 0.25, colors.black),
         ('BOX', (0,0), (-1,-1), 0.25, colors.black),
+        ('LEADING', (0,0), (-1,-1), 9),
+        ('PADDING', (0,0), (-1,-1), (1,1,1,1)),
     ]))
     
     elements.append(t)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 5*mm))
     
     # Totales
-    elements.append(Paragraph(f"Total: ${total_general:.2f}", styles["Small"]))
-    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(f"Total: ${total_general:.2f}", styles["TicketTotal"]))
+    elements.append(Spacer(1, 5*mm))
     
     # Método de pago
-    elements.append(Paragraph(f"Pago: {main_sale.payment_method.upper()}", styles["Small"]))
-    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(f"Pago: {main_sale.payment_method.upper()}", styles["TicketPayment"]))
+    elements.append(Spacer(1, 5*mm))
     
     # Pie de página
-    elements.append(Paragraph("¡Gracias por su compra!", styles["Center"]))
-    elements.append(Paragraph("Sistema de Ventas Wellmade v1.0", styles["Small"]))
+    elements.append(Paragraph("¡Gracias por su compra!", styles["TicketThanks"]))
+    elements.append(Spacer(1, 3*mm))
+    elements.append(Paragraph("Sistema de Ventas Wellmade v1.0", styles["TicketFooter"]))
     
     doc.build(elements)
     temp_pdf.close()
@@ -446,89 +475,108 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
     iva_total = sum(v.iva for v in ventas)
     total_general = sum(v.total for v in ventas)
     
-    # Generar filas de productos para la tabla
+    # Generar filas de productos para la tabla (versión compacta)
     productos_html = ""
     for venta in ventas:
         producto = db.query(models.Product).filter(models.Product.id == venta.product_id).first()
+        nombre_producto = producto.nombre if producto else 'Desconocido'
+        # Acortar nombres de productos para 58mm
+        if len(nombre_producto) > 20:
+            nombre_producto = nombre_producto[:17] + "..."
+            
         productos_html += f"""
         <tr>
-            <td>{producto.nombre if producto else 'Desconocido'}</td>
+            <td>{nombre_producto}</td>
             <td class="right">{venta.quantity}</td>
-            <td class="right">${producto.precio if producto else 0:.2f}</td>
-            <td class="right">{venta.product_iva_percentage}%</td>
             <td class="right">${venta.total:.2f}</td>
         </tr>
         """
     
-    # Generar HTML completo
+    # Generar HTML completo optimizado para 58mm
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>Ticket de Venta</title>
+        <meta charset="UTF-8">
         <style>
             body {{
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-                width: 80mm;
+                font-family: 'Arial Narrow', Arial, sans-serif;
+                font-size: 10px;
+                width: 58mm;
                 margin: 0;
-                padding: 5px;
+                padding: 2px;
             }}
             .header {{
                 text-align: center;
                 font-weight: bold;
-                margin-bottom: 10px;
+                font-size: 11px;
+                margin-bottom: 5px;
             }}
             .info {{
-                margin-bottom: 5px;
+                margin-bottom: 3px;
+                line-height: 1.2;
+            }}
+            .info-line {{
+                display: flex;
+                justify-content: space-between;
             }}
             table {{
                 width: 100%;
                 border-collapse: collapse;
-                margin: 10px 0;
+                margin: 5px 0;
             }}
             th {{
                 text-align: left;
-                border-bottom: 1px dashed #000;
-                padding: 2px 0;
+                border-bottom: 1px solid #000;
+                padding: 1px 0;
+                font-weight: bold;
             }}
             td {{
-                padding: 2px 0;
+                padding: 1px 0;
+                vertical-align: top;
             }}
             .right {{
                 text-align: right;
             }}
             .total {{
                 font-weight: bold;
-                margin-top: 10px;
+                margin-top: 5px;
             }}
             .footer {{
                 text-align: center;
-                margin-top: 20px;
-                font-size: 10px;
+                margin-top: 10px;
+                font-size: 9px;
             }}
             .summary {{
-                margin-top: 10px;
-                border-top: 1px dashed #000;
-                padding-top: 5px;
+                margin-top: 5px;
+                border-top: 1px solid #000;
+                padding-top: 3px;
+            }}
+            .nowrap {{
+                white-space: nowrap;
             }}
         </style>
     </head>
     <body>
         <div class="header">MI TIENDA</div>
-        <div class="info">Dirección: Calle Principal 123</div>
-        <div class="info">Tel: 555-1234 | RFC: XXXX000000XX</div>
-        <div class="info">Fecha: {main_sale.timestamp.strftime('%d/%m/%Y %H:%M')}</div>
-        <div class="info">Ticket: {main_sale.sale_group_id}</div>
+        <div class="info">Calle Principal 123</div>
+        <div class="info-line">
+            <span>Tel: 555-1234</span>
+            <span>RFC: XXXX000000XX</span>
+        </div>
+        
+        <div class="info-line">
+            <span>Fecha: {main_sale.timestamp.strftime('%d/%m/%Y %H:%M')}</span>
+            <span>Ticket: {main_sale.sale_group_id}</span>
+        </div>
         
         <table>
             <thead>
                 <tr>
                     <th>Producto</th>
-                    <th class="right">Cant</th>
-                    <th class="right">P.Unit</th>
-                    <th class="right">IVA%</th>
-                    <th class="right">Total</th>
+                    <th class="right nowrap">Cant</th>
+                    <th class="right nowrap">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -537,16 +585,25 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
         </table>
         
         <div class="summary">
-            <div>Subtotal: ${subtotal:.2f}</div>
-            <div>IVA: ${iva_total:.2f}</div>
-            <div class="total">Total: ${total_general:.2f}</div>
+            <div class="info-line">
+                <span>Subtotal:</span>
+                <span>${subtotal:.2f}</span>
+            </div>
+            <div class="info-line">
+                <span>IVA:</span>
+                <span>${iva_total:.2f}</span>
+            </div>
+            <div class="info-line total">
+                <span>TOTAL:</span>
+                <span>${total_general:.2f}</span>
+            </div>
         </div>
         
-        <div class="info">Método de pago: {main_sale.payment_method.upper()}</div>
+        <div class="info">Pago: {main_sale.payment_method.upper()}</div>
         
         <div class="footer">
             ¡Gracias por su compra!<br>
-            Sistema de Ventas Wellmade 
+            Sistema Wellmade
         </div>
         
         <script>
