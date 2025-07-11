@@ -70,8 +70,9 @@
   <div class="barcode-section">
     <h3>⚖️ Balanza Digital</h3>
     <div id="weight-display" class="mb-3 p-2 bg-light border rounded">
-      Peso actual: <span id="current-weight">0.000</span> kg
-    </div>
+  <label for="manual-weight">Peso actual (kg):</label>
+  <input type="number" id="manual-weight" step="0.001" class="form-control mt-1" value="0.000" oninput="updateManualWeight()">
+</div>
     <div id="weight-product-info" class="alert alert-info d-none">
       <i class="bi bi-info-circle"></i> Producto por peso seleccionado: <strong id="weight-product-name"></strong>. La cantidad se actualizará automáticamente.
     </div>
@@ -243,26 +244,6 @@
 let selectedProduct = null;
 
 // Simulador de lectura de balanza (reemplazar con conexión real)
-function simulateScaleReading() {
-    // Esta función se llamaría periódicamente para leer la balanza
-    // En tu implementación real, esto sería la conexión directa con la balanza
-    
-    // Ejemplo: actualizar el peso cada segundo con un valor simulado
-    setInterval(() => {
-        // En un sistema real, aquí leerías el valor de la balanza
-        const newWeight = Math.random() * 2 + 0.5; // Valor simulado entre 0.5 y 2.5 kg
-        
-        if (Math.abs(newWeight - currentWeight) > 0.01) { // Solo actualizar si hay cambio significativo
-            currentWeight = newWeight;
-            document.getElementById('current-weight').textContent = currentWeight.toFixed(3);
-            
-            // Si hay un producto seleccionado, actualizar la cantidad
-            if (selectedProduct) {
-                updateProductQuantity(selectedProduct, currentWeight);
-            }
-        }
-    }, 1000);
-}
 
 // Función para manejar la selección de producto
 function onProductSelected(product) {
@@ -541,6 +522,16 @@ function calculateTotals() {
 function downloadTicketPDF(saleId) {
     console.log("Descargando PDF para venta ID:", saleId);
     window.open(`/ticket/${saleId}`, '_blank');
+}
+function updateManualWeight() {
+    const input = document.getElementById('manual-weight');
+    const weight = parseFloat(input.value) || 0;
+    currentWeight = weight;
+
+    // Si hay un producto seleccionado por peso, actualizar su cantidad
+    if (selectedProduct) {
+        updateProductQuantity(selectedProduct, currentWeight);
+    }
 }
 </script>
 <div style="text-align: center; margin-top: 40px;">
