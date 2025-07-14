@@ -391,11 +391,11 @@ async def generate_ticket(sale_group_id: int, db: Session = Depends(get_db)):
     elements = []
     
     # Encabezado
-    elements.append(Paragraph("MI TIENDA", styles["Title"]))
+    elements.append(Paragraph("Panaderia y minimercado La herradura", styles["Title"]))
     elements.append(Spacer(1, 5*mm))
     
     # Información de la tienda
-    elements.append(Paragraph("Dirección: Calle Principal 123", styles["TicketSmall"]))
+    elements.append(Paragraph("Dirección: Calle 15 no 8-09", styles["TicketSmall"]))
     elements.append(Paragraph("Tel: 555-1234", styles["TicketSmall"]))
     elements.append(Paragraph("RFC: XXXX000000XX", styles["TicketSmall"]))
     elements.append(Spacer(1, 5*mm))
@@ -559,10 +559,10 @@ async def thermal_ticket(sale_group_id: int, db: Session = Depends(get_db)):
         </style>
     </head>
     <body>
-        <div class="header">MI TIENDA</div>
-        <div class="info">Calle Principal 123</div>
+        <div class="header">Panaderia y minimercado La herradura</div>
+        <div class="info">Calle 15 no 8-09</div>
         <div class="info-line">
-            <span>Tel: 555-1234</span>
+            <span>Tel: XXXXX</span>
             <span>RFC: XXXX000000XX</span>
         </div>
         
