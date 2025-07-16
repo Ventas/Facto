@@ -125,7 +125,9 @@
               <option value="">Seleccione...</option>
               <option value="efectivo">Efectivo</option>
               <option value="tarjeta">Tarjeta</option>
-              <option value="transferencia">Transferencia</option>
+              <option value="Nequi">Nequi</option>
+              <option value="Daviplata">Daviplata</option>
+              <option value="Bancolombia">Bancolombia</option>
             </select>
           </div>
           <div class="mb-3">
@@ -402,7 +404,6 @@ function calculateTotals() {
         const quantity = parseFloat(qtyInput.value);
         const maxStock = parseFloat(qtyInput.getAttribute("max"));
         
-        // Obtener el IVA del producto (con valor por defecto 0 si no existe)
         const ivaInput = row.querySelector('input[name="product"]');
         const ivaPercentage = parseFloat(ivaInput.getAttribute('data-iva')) || 0;
 
@@ -423,19 +424,30 @@ function calculateTotals() {
         ivaTotal += productIva;
     });
 
-    const total = subtotal + ivaTotal;
-        // Corregido el ID (de total_display a total_display)
-        document.getElementById('subtotal_display').textContent = `$${subtotal.toFixed(2)}`;
-        document.getElementById('iva_display').textContent = `$${ivaTotal.toFixed(2)}`;
-        document.getElementById('total_display').textContent = `$${total.toFixed(2)}`;
-
-        const moneyReceived = parseFloat(document.getElementById('money_received').value) || 0;
-        const change = moneyReceived - total;
-        
-        // Mostrar el cambio (rojo si es negativo)
-        const changeDisplay = document.getElementById('change_display');
-        changeDisplay.textContent = `$${Math.abs(change).toFixed(2)}`;
+    let total = subtotal + ivaTotal;
     
+    // Redondear a los 50 más cercanos (hacia arriba)
+    const redondeo = 50; // Redondear a múltiplos de 50
+    total = Math.ceil(total / redondeo) * redondeo;
+    
+    // Si quieres que 1750 se mantenga como 1750 (en lugar de subir a 1800)
+    // puedes usar esta versión alternativa:
+    // const residuo = total % redondeo;
+    // total = residuo > 0 ? total + (redondeo - residuo) : total;
+
+    // Actualizar displays
+    document.getElementById('subtotal_display').textContent = `$${subtotal.toFixed(2)}`;
+    document.getElementById('iva_display').textContent = `$${ivaTotal.toFixed(2)}`;
+    document.getElementById('total_display').textContent = `$${total.toFixed(2)}`;
+
+    // Calcular cambio
+    const moneyReceived = parseFloat(document.getElementById('money_received').value) || 0;
+    const change = moneyReceived - total;
+    
+    // Mostrar el cambio
+    const changeDisplay = document.getElementById('change_display');
+    changeDisplay.textContent = `$${Math.abs(change).toFixed(2)}`;
+
     if (change < 0) {
         changeDisplay.style.color = '#dc3545';
         changeDisplay.style.backgroundColor = '#ffe6e6';
@@ -445,13 +457,12 @@ function calculateTotals() {
     }
 }
 
-    // Agregar event listener para el campo money_received
-    document.getElementById('money_received').addEventListener('input', calculateTotals);
-    document.getElementById('money_received').addEventListener('change', calculateTotals);
+// Agregar event listeners
+document.getElementById('money_received').addEventListener('input', calculateTotals);
+document.getElementById('money_received').addEventListener('change', calculateTotals);
 
-    // Llamar a calculateTotals al cargar la página para inicializar valores
-    document.addEventListener('DOMContentLoaded', calculateTotals);
-
+// Inicializar al cargar la página
+document.addEventListener('DOMContentLoaded', calculateTotals);
     // Función para manejar el escaneo de código de barras
     async function scanBarcode() {
         const barcode = document.getElementById('barcode-input').value.trim();

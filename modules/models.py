@@ -44,7 +44,7 @@ class Sale(Base):
     iva = Column(Float)
     payment_method = Column(String)
     product_iva_percentage = Column(Float)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.now)
 
     # Relación hacia producto
     product = relationship("Product", back_populates="sales")

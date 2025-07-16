@@ -53,7 +53,7 @@ def sales_page(request: Request, db: Session = Depends(get_db)):
 def process_sale(
     request: Request,
     product: List[str] = Form(...),
-    quantity: List[float] = Form(...),  # Cambiado a float para manejar decimales
+    quantity: List[float] = Form(...),
     payment_method: str = Form(...),
     money_received: float = Form(...),
     db: Session = Depends(get_db)
@@ -96,7 +96,7 @@ def process_sale(
                 "resumen": resumen
             })
 
-        # Calcular subtotal e IVA usando el porcentaje de IVA del producto
+        # Calcular subtotal e IVA
         precio_sin_iva = selected_product.precio
         subtotal_producto = precio_sin_iva * q
         iva_producto = subtotal_producto * (selected_product.iva / 100)
@@ -117,11 +117,16 @@ def process_sale(
             iva=iva_producto,
             total=total_producto,
             payment_method=payment_method,
-            product_iva_percentage=selected_product.iva  # Guardar el % de IVA aplicado
+            product_iva_percentage=selected_product.iva
         )
         sales_to_save.append(new_sale)
         db.add(new_sale)
 
+    # Aplicar redondeo a múltiplos de 50 (1735 → 1750, 1785 → 1800)
+    redondeo = 50
+    total_general = ((total_general + redondeo - 1) // redondeo) * redondeo
+
+    # Recalcular cambio con el total redondeado
     change = money_received - total_general
 
     if change < 0:
@@ -135,7 +140,7 @@ def process_sale(
 
     db.commit()
 
-    # Actualizar resumen después del commit
+    # Actualizar resumen
     ventas_hoy = db.query(models.Sale).filter(func.date(models.Sale.timestamp) == hoy).all()
     resumen = {
         "total_vendido": sum(v.total for v in ventas_hoy),
@@ -149,15 +154,15 @@ def process_sale(
             "status": "ok", 
             "subtotal": subtotal,
             "iva": iva_total,
-            "total": total_general,
-            "change": change,
-            "sale_id": sale_group_id
+            "total": total_general,  # Total redondeado
+            "change": change,       # Cambio con total redondeado
+            "sale_id": sale_group_id,
+            "total_sin_redondeo": subtotal + iva_total  # Opcional: para referencia
         },
         "productos": db.query(models.Product).all(),
         "ventas": db.query(models.Sale).all(),
         "resumen": resumen
     })
-
 @router.post("/delete-sale")
 def delete_sale(sale_id: int = Form(...), db: Session = Depends(get_db)):
     venta = db.query(models.Sale).filter(models.Sale.id == sale_id).first()
