@@ -90,3 +90,5 @@ def editar_producto(
         producto.fecha_vencimiento = datetime.strptime(fecha_vencimiento, "%Y-%m-%d").date() if fecha_vencimiento else None  # AÑADIDO
         db.commit()
     return RedirectResponse(url="/inventario", status_code=303)
+
+   

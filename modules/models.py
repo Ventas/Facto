@@ -63,6 +63,18 @@ class Proveedor(Base):
     metodo_pago = Column(String(50))
     creado_en = Column(DateTime, default=datetime.utcnow)
 
+class EquipoProveedor(Base):
+    __tablename__ = "equipos_proveedores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    direccion = Column(String(200))
+    telefono = Column(String(20))
+    nombre_empresa = Column(String(100), nullable=False)
+    numero_contacto = Column(String(20))
+    nombre_contacto = Column(String(100))
+    equipos = Column(String(500))  # Puede ser una descripción de los equipos
+    precios = Column(String(500))  # Puede ser una descripción general de precios
+    creado_en = Column(DateTime, default=datetime.utcnow)
     
 
 

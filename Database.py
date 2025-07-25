@@ -162,6 +162,26 @@ Base = declarative_base()
 #     conn.execute(text(alter_table_sql))
 #     print("✅ Columna 'fecha_vencimiento' añadida a la tabla 'products' correctamente.")
 
+# create_equipos_proveedores_table_sql = """
+# CREATE TABLE IF NOT EXISTS `equipos_proveedores` (
+#   `id` INT NOT NULL AUTO_INCREMENT,
+#   `direccion` VARCHAR(200) DEFAULT NULL,
+#   `telefono` VARCHAR(20) DEFAULT NULL,
+#   `nombre_empresa` VARCHAR(100) NOT NULL,
+#   `numero_contacto` VARCHAR(20) DEFAULT NULL,
+#   `nombre_contacto` VARCHAR(100) DEFAULT NULL,
+#   `equipos` VARCHAR(500) DEFAULT NULL,
+#   `precios` VARCHAR(500) DEFAULT NULL,
+#   `creado_en` DATETIME DEFAULT CURRENT_TIMESTAMP,
+#   PRIMARY KEY (`id`),
+#   KEY `ix_equipos_proveedores_id` (`id`)
+# ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+# """
+
+# # 🚀 Ejecutamos en un bloque de transacción automática
+# with engine.begin() as conn:
+#     conn.execute(text(create_equipos_proveedores_table_sql))
+
 
 def get_db():
     db = SessionLocal()

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Equipos/Proveedores</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .btn-agregar {
+            margin: 20px auto;
+            display: block;
+        }
+        .modal-content label {
+            font-weight: bold;
+        }
+        .modal-content input, .modal-content textarea {
+            margin-bottom: 15px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    
+
+        <h1>Gestión de Equipos/Proveedores</h1>
+
+        <button class="btn btn-success btn-agregar" onclick="abrirModalAgregar()">
+            <i class="fas fa-plus"></i> Agregar Nuevo
+        </button>
+
+             <div class="table-responsive">
+            <table class="table table-bordered table-hover mt-4">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empresa</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th>Dirección</th>
+                        <th>Equipos</th>
+                        <th>Precios</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+               <tbody>
+    {% if equipos %}
+        {% for equipo in equipos %}
+        <tr>
+    <td>{{ equipo.nombre_empresa }}</td>
+    <td>{{ equipo.nombre_contacto }}<br>{{ equipo.numero_contacto }}</td>
+    <td>{{ equipo.telefono }}</td>
+    <td>{{ equipo.direccion }}</td> <!-- NUEVO -->
+    <td>{{ equipo.equipos[:50] }}{% if equipo.equipos|length > 50 %}...{% endif %}</td>
+    <td>{{ equipo.precios[:50] }}{% if equipo.precios|length > 50 %}...{% endif %}</td> <!-- NUEVO -->
+    <td>
+        <button class="btn btn-warning btn-sm mb-1" onclick='abrirModalEditar(
+            {{ equipo.id }},
+            {{ equipo.nombre_empresa|tojson }},
+            {{ equipo.direccion|tojson }},
+            {{ equipo.telefono|tojson }},
+            {{ equipo.numero_contacto|tojson }},
+            {{ equipo.nombre_contacto|tojson }},
+            {{ equipo.equipos|tojson }},
+            {{ equipo.precios|tojson }}
+        )'>
+            Editar
+        </button>
+        <form method="post" action="/equipos-proveedores/eliminar/{{ equipo.id }}" class="d-inline" onsubmit="return confirm('¿Estás seguro?')">
+            <button class="btn btn-danger btn-sm" type="submit">Eliminar</button>
+        </form>
+    </td>
+</tr>
+
+        {% endfor %}
+    {% else %}
+        <tr>
+            <td colspan="5" class="text-center">No hay equipos/proveedores registrados</td>
+        </tr>
+    {% endif %}
+</tbody>
+            </table>
+        </div>
+
+        <!-- Modal Agregar -->
+        <div id="modalAgregar" class="modal" tabindex="-1" style="display:none">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content p-4">
+                    <span class="close text-end" onclick="document.getElementById('modalAgregar').style.display='none'">&times;</span>
+                    <h2 class="text-center">Agregar Equipo/Proveedor</h2>
+                    <form method="post" action="/equipos-proveedores">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label>Nombre Empresa:</label>
+                                <input type="text" name="nombre_empresa" class="form-control" required>
+
+                                <label>Dirección:</label>
+                                <input type="text" name="direccion" class="form-control">
+
+                                <label>Teléfono Empresa:</label>
+                                <input type="text" name="telefono" class="form-control">
+
+                                <label>Número de Contacto:</label>
+                                <input type="text" name="numero_contacto" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label>Nombre Contacto:</label>
+                                <input type="text" name="nombre_contacto" class="form-control">
+
+                                <label>Equipos:</label>
+                                <textarea name="equipos" class="form-control" rows="3"></textarea>
+
+                                <label>Precios:</label>
+                                <textarea name="precios" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Agregar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Editar -->
+        <div id="modalEditar" class="modal" tabindex="-1" style="display:none">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content p-4">
+                    <span class="close text-end" onclick="document.getElementById('modalEditar').style.display='none'">&times;</span>
+                    <h2 class="text-center">Editar Equipo/Proveedor</h2>
+                    <form method="post" id="formEditar">
+                        <input type="hidden" name="id" id="editar_id">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label>Nombre Empresa:</label>
+                                <input type="text" name="nombre_empresa" id="editar_nombre_empresa" class="form-control" required>
+
+                                <label>Dirección:</label>
+                                <input type="text" name="direccion" id="editar_direccion" class="form-control">
+
+                                <label>Teléfono Empresa:</label>
+                                <input type="text" name="telefono" id="editar_telefono" class="form-control">
+
+                                <label>Número de Contacto:</label>
+                                <input type="text" name="numero_contacto" id="editar_numero_contacto" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label>Nombre Contacto:</label>
+                                <input type="text" name="nombre_contacto" id="editar_nombre_contacto" class="form-control">
+
+                                <label>Equipos:</label>
+                                <textarea name="equipos" id="editar_equipos" class="form-control" rows="3"></textarea>
+
+                                <label>Precios:</label>
+                                <textarea name="precios" id="editar_precios" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Actualizar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function abrirModalAgregar() {
+            document.getElementById("modalAgregar").style.display = "block";
+        }
+
+        function abrirModalEditar(id, nombre_empresa, direccion, telefono, numero_contacto, nombre_contacto, equipos, precios) {
+            document.getElementById('editar_id').value = id;
+            document.getElementById('editar_nombre_empresa').value = nombre_empresa;
+            document.getElementById('editar_direccion').value = direccion;
+            document.getElementById('editar_telefono').value = telefono;
+            document.getElementById('editar_numero_contacto').value = numero_contacto;
+            document.getElementById('editar_nombre_contacto').value = nombre_contacto;
+            document.getElementById('editar_equipos').value = equipos;
+            document.getElementById('editar_precios').value = precios;
+            document.getElementById('formEditar').action = `/equipos-proveedores/editar/${id}`;
+            document.getElementById("modalEditar").style.display = "block";
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
+</html>
+

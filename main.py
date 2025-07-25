@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Form, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from Routes import auth, inventario,sales, Proveedor
+from Routes import auth, inventario,sales, Proveedor,equipos_proveedor
 from modules import models
 from Database import engine
 from fastapi.responses import HTMLResponse , RedirectResponse
@@ -28,7 +28,8 @@ app.include_router(auth.router)
 app.include_router(inventario.router)
 app.include_router(sales.router)
 templates = Jinja2Templates(directory="templates")
-app.include_router(Proveedor.router)
+app.include_router(Proveedor.router) 
+app.include_router(equipos_proveedor.router)
 
 
 
